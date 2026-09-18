@@ -30,7 +30,7 @@ Fund and exercise several complete 20-minute cycles on devnet before mainnet. Fo
 Set these locally or in the keeper service's secret store:
 
 ```text
-MUSE_REWARD_MINT=<verified METAx mint>
+MUSE_REWARD_MINT=Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu
 MUSE_KEEPER_ADDRESS=<keeper public key>
 ANCHOR_PROVIDER_URL=<RPC URL>
 ANCHOR_WALLET=<absolute local path to signer keypair>
@@ -63,10 +63,10 @@ Add only public addresses and server credentials to hosting secrets:
 MUSE_TOKEN_ADDRESS=<MUSE coin mint>
 MUSE_TREASURY_ADDRESS=<vault/config public address shown by initialization>
 MUSE_REWARD_TOKEN_ACCOUNT=<contract-controlled METAx token account>
-MUSE_REWARD_MINT=<verified METAx mint>
+MUSE_REWARD_MINT=Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu
 MUSE_REWARD_PROGRAM_ID=<deployed program id>
 MUSE_KEEPER_ADDRESS=<keeper public key>
-MUSE_REWARD_DECIMALS=<verified mint decimals>
+MUSE_REWARD_DECIMALS=8
 ```
 
 Do not add a seed phrase or keypair to the website. The keeper signer belongs only in the separate automation environment.
