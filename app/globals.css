@@ -53,24 +53,24 @@ body {
 }
 
 :root {
-  --background: oklch(0.975 0.01 105);
-  --foreground: oklch(0.19 0.025 165);
-  --card: oklch(0.995 0.006 105);
-  --card-foreground: oklch(0.19 0.025 165);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.88 0.2 125);
-  --primary-foreground: oklch(0.18 0.03 160);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.94 0.012 110);
-  --muted-foreground: oklch(0.47 0.025 165);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: oklch(0.975 0.014 75);
+  --foreground: oklch(0.245 0.028 350);
+  --card: oklch(0.995 0.008 78);
+  --card-foreground: oklch(0.245 0.028 350);
+  --popover: oklch(0.995 0.008 78);
+  --popover-foreground: oklch(0.245 0.028 350);
+  --primary: oklch(0.63 0.19 355);
+  --primary-foreground: oklch(0.99 0.008 78);
+  --secondary: oklch(0.94 0.035 5);
+  --secondary-foreground: oklch(0.29 0.04 350);
+  --muted: oklch(0.94 0.018 68);
+  --muted-foreground: oklch(0.5 0.035 350);
+  --accent: oklch(0.92 0.055 5);
+  --accent-foreground: oklch(0.29 0.04 350);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.88 0.02 120);
-  --input: oklch(0.88 0.02 120);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.86 0.035 15);
+  --input: oklch(0.86 0.035 15);
+  --ring: oklch(0.63 0.19 355);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -89,14 +89,57 @@ body {
 
 .rcc-grid {
   background-image:
-    linear-gradient(rgba(210, 255, 108, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(210, 255, 108, 0.08) 1px, transparent 1px);
+    linear-gradient(rgba(183, 55, 105, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(183, 55, 105, 0.07) 1px, transparent 1px);
   background-size: 64px 64px;
   mask-image: linear-gradient(to bottom, black, transparent 88%);
 }
 
 ::selection {
-  background: rgba(203, 255, 86, 0.28);
+  background: rgba(226, 100, 147, 0.28);
+}
+
+body {
+  background-color: #fbf6ee;
+  background-image:
+    radial-gradient(circle at 8% 0%, rgba(238, 173, 194, 0.18), transparent 28rem),
+    repeating-linear-gradient(0deg, rgba(94, 58, 71, 0.018) 0, rgba(94, 58, 71, 0.018) 1px, transparent 1px, transparent 5px);
+}
+
+h1,
+h2,
+h3 {
+  font-family: Georgia, 'Times New Roman', serif;
+  letter-spacing: -0.035em;
+}
+
+/* Reframe legacy dark surfaces as warm editorial paper without changing layout. */
+[class*="bg-[#08110e]"],
+[class*="bg-[#09110f]"],
+[class*="bg-[#0c1714]"],
+[class*="bg-[#0d1814]"],
+[class*="bg-[#101a17]"],
+[class*="bg-[#111d19]"],
+[class*="bg-[#13201c]"],
+[class*="bg-[#15231f]"] {
+  background-color: #fbf6ee !important;
+}
+
+[class*="bg-[#173c2d]"] {
+  background-color: #8f3559 !important;
+}
+
+[class*="bg-[#44b86a]"] {
+  background-color: #c6537e !important;
+}
+
+[class~="text-white"],
+[class*="text-white/"] {
+  color: #3b2930 !important;
+}
+
+[class*="border-white/"] {
+  border-color: rgba(151, 78, 104, 0.2) !important;
 }
 
 .dark {

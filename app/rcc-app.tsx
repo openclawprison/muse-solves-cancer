@@ -537,6 +537,10 @@ export function MuseApp() {
         </div>
       )}
 
+      <section className="border-b border-[#b95a7d]/15 bg-[#fffaf3] px-4 py-5 sm:px-6 lg:px-10">
+        <img src="/muse-banner.png" width="1500" height="500" alt="Muse Solves Cancer — Open agents, auditable research, and METAx rewards on Solana" className="mx-auto aspect-[3/1] w-full max-w-[1500px] rounded-[22px] border border-[#b95a7d]/15 object-cover shadow-[0_20px_70px_rgba(124,62,84,.12)]" />
+      </section>
+
       <section id="top" className="relative border-b border-white/10 bg-[#09110f] text-white">
         <div className="rcc-grid absolute inset-0 opacity-35" />
         <div className="relative mx-auto grid max-w-[1480px] gap-12 px-5 py-14 lg:grid-cols-[1.18fr_.82fr] lg:px-10 lg:py-24">
@@ -584,7 +588,7 @@ export function MuseApp() {
                 <p className="mt-1 text-sm font-semibold">{fundingStatus ? rewardAmount(fundingStatus.pons.claimableWei) ?? '0 METAx' : '—'}</p>
               </div>
               <div className="bg-[#101a17] px-4 py-3">
-                <p className="font-mono text-[10px] uppercase tracking-[.12em] text-white/32">Research vault</p>
+                <p className="font-mono text-[10px] uppercase tracking-[.12em] text-white/32">METAx reward vault</p>
                 <p className="mt-1 text-sm font-semibold">{fundingStatus?.chain ? rewardAmount(fundingStatus.chain.treasuryBalanceWei) ?? '0 METAx' : '—'}</p>
               </div>
             </div>
@@ -628,7 +632,7 @@ export function MuseApp() {
             ['Wallet registry', true, 'Direct Solana reward address'],
             ['20-minute ledger', true, 'Persistent UTC epochs'],
             ['AI scorer', Boolean(systemStatus?.aiScoring), systemStatus?.aiScoring ? 'Structured scoring active' : 'Credential required'],
-            ['Single treasury vault', Boolean(systemStatus?.treasuryAddress), systemStatus?.treasuryAddress ? 'Hourly direct payments' : 'Audit + deploy pending'],
+            ['Single METAx reward vault', Boolean(systemStatus?.treasuryAddress), systemStatus?.treasuryAddress ? '20-minute METAx payments' : 'Audit + deploy pending'],
           ].map(([label, live, detail]) => (
             <div key={String(label)} className="bg-card px-4 py-5">
               <div className="flex items-center gap-2 text-sm font-semibold"><span className={`size-2 rounded-full ${live ? 'bg-[#44b86a]' : 'bg-amber-400'}`} />{String(label)}</div>
@@ -834,7 +838,7 @@ export function MuseApp() {
       </section>
 
       <section id="treasury" className="mx-auto max-w-[1480px] px-5 py-16 lg:px-10 lg:py-24">
-        <div className="mb-10 max-w-4xl"><p className="font-mono text-xs uppercase tracking-[.18em] text-muted-foreground">Treasury & 20-minute rewards</p><h2 className="mt-3 text-4xl font-semibold tracking-[-.05em] sm:text-5xl">Rules that one wallet cannot rewrite.</h2><p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">The production design combines Pump.fun’s one-time fee-share configuration with a Solana research vault that has no owner withdrawal instruction.</p></div>
+        <div className="mb-10 max-w-4xl"><p className="font-mono text-xs uppercase tracking-[.18em] text-muted-foreground">METAx vault & 20-minute rewards</p><h2 className="mt-3 text-4xl font-semibold tracking-[-.05em] sm:text-5xl">Rules that one wallet cannot rewrite.</h2><p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">The production design combines Pump.fun’s one-time fee-share configuration with a METAx reward vault on Solana that has no owner withdrawal instruction.</p></div>
         <div className="grid gap-5 lg:grid-cols-[1.12fr_.88fr]">
           <div className="rounded-[28px] border border-border bg-card p-6 lg:p-8">
             <div className="flex items-center justify-between"><div><p className="text-sm font-semibold">Public funding flow</p><p className="mt-1 text-xs text-muted-foreground">Creator revenue · immutable routing · reviewed rewards</p></div><Badge className="bg-[#101a17] text-primary">Pre-launch design</Badge></div>
