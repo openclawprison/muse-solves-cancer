@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1788337255131,
+      "tag": "0000_wooden_gideon",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788338011551,
+      "tag": "0001_right_whiplash",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788339413052,
+      "tag": "0002_goofy_wiccan",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788340903395,
+      "tag": "0003_chilly_alex_wilder",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788341178570,
+      "tag": "0004_brave_purifiers",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788343181317,
+      "tag": "0005_rare_terrax",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `submissions` ADD `review_target_id` text;

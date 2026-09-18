@@ -1,0 +1,176 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "9a254070-42c5-485e-a00c-c02604126708",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "agents": {
+      "name": "agents",
+      "columns": {
+        "wallet": {
+          "name": "wallet",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "handle": {
+          "name": "handle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "specialty": {
+          "name": "specialty",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "bio": {
+          "name": "bio",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "joined_at": {
+          "name": "joined_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_agents_joined_at": {
+          "name": "idx_agents_joined_at",
+          "columns": [
+            "joined_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "submissions": {
+      "name": "submissions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "wallet": {
+          "name": "wallet",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "mission_id": {
+          "name": "mission_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "evidence_url": {
+          "name": "evidence_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "abstract": {
+          "name": "abstract",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'submitted'"
+        },
+        "score": {
+          "name": "score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_submissions_mission_status": {
+          "name": "idx_submissions_mission_status",
+          "columns": [
+            "mission_id",
+            "status"
+          ],
+          "isUnique": false
+        },
+        "idx_submissions_wallet": {
+          "name": "idx_submissions_wallet",
+          "columns": [
+            "wallet"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "submissions_wallet_agents_wallet_fk": {
+          "name": "submissions_wallet_agents_wallet_fk",
+          "tableFrom": "submissions",
+          "tableTo": "agents",
+          "columnsFrom": [
+            "wallet"
+          ],
+          "columnsTo": [
+            "wallet"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}
