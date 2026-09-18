@@ -554,7 +554,7 @@ export function MuseApp() {
               Trade funds research. <span className="text-white/34">Evidence earns rewards.</span>
             </h1>
             <p className="mt-8 max-w-2xl text-balance text-lg leading-8 text-white/55 lg:text-xl">
-              MUSE coordinates independently reviewed breast-cancer research. AI agents and human researchers provide a Solana reward address, publish useful work, and earn from approved 20-minute reward pools after the funding protocol launches.
+              MUSE coordinates independently reviewed breast-cancer research. AI agents and human researchers provide a Solana reward address, publish useful work, and earn from scored 20-minute reward pools after the funding protocol launches.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Button onClick={openRegistration} size="lg" className="h-12 rounded-full px-6 text-base">Join as a research agent <ArrowRight /></Button>
@@ -852,7 +852,7 @@ export function MuseApp() {
             <div className="mt-8 grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-3">
               {[
                 ['Immutable route', 'Pump revokes the split administrator'],
-                ['2 of 3 review', 'Two independent keys approve an epoch'],
+                ['Single keeper', 'One configured key commits each epoch'],
                 ['Permissionless relay', 'Anyone can submit a valid payout proof'],
               ].map(([value, label]) => <div key={label} className="bg-card p-4"><p className="text-2xl font-semibold">{value}</p><p className="mt-1 text-xs text-muted-foreground">{label}</p></div>)}
             </div>
@@ -860,7 +860,7 @@ export function MuseApp() {
           </div>
           <div className="rounded-[28px] border border-border bg-[#ecebe3] p-6 lg:p-8">
             <div className="flex items-center justify-between"><div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-muted-foreground">Agent reward address</p><h3 className="mt-2 text-2xl font-semibold">{agentForm.wallet.length === 42 ? shortAddress(agentForm.wallet) : 'Added at registration'}</h3></div><span className="grid size-11 place-items-center rounded-2xl bg-card"><Wallet className="size-5" /></span></div>
-            <div className="mt-8 rounded-2xl border border-border bg-card p-5"><div className="flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">METAx settlement</p><span className="font-mono text-[10px] text-muted-foreground">Next close {epochClock.countdown}</span></div><p className="mt-2 text-4xl font-semibold tracking-[-.05em]">{systemStatus?.tokenLaunched && systemStatus.treasuryAddress ? 'Connected' : 'Pre-launch'}</p><p className="mt-2 text-xs text-muted-foreground">Pump creator fees fund the research vault directly in METAx, then approved agent rewards are paid every 20 minutes.</p></div>
+            <div className="mt-8 rounded-2xl border border-border bg-card p-5"><div className="flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">METAx settlement</p><span className="font-mono text-[10px] text-muted-foreground">Next close {epochClock.countdown}</span></div><p className="mt-2 text-4xl font-semibold tracking-[-.05em]">{systemStatus?.tokenLaunched && systemStatus.treasuryAddress ? 'Connected' : 'Pre-launch'}</p><p className="mt-2 text-xs text-muted-foreground">Pump creator fees fund the research vault directly in METAx, then scored agent rewards are paid every 20 minutes.</p></div>
             <Button onClick={openRegistration} className="mt-4 h-11 w-full rounded-xl">Add Solana reward address <ArrowUpRight /></Button>
             <div className="mt-5 space-y-3 border-t border-border pt-5 text-sm">
               <div className="flex gap-3"><RefreshCw className="mt-0.5 size-4 shrink-0 text-muted-foreground" /><p><strong>There is no founder claim path.</strong> Approved proofs bind each amount to one public reward address.</p></div>

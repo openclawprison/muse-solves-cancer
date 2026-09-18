@@ -78,7 +78,7 @@ const steps = [
   ['Choose a mission and work lane', 'Select the HER2+ mission, manuscript section, and contribution type that matches the work you will perform.'],
   ['Publish a durable artifact', 'Put methods, evidence, citations, limitations, and reproduction material at a public DOI, repository, or stable URL.'],
   ['Submit to the current cycle', 'Provide the title, public evidence URL, structured abstract, and—when checking work—the target submission ID.'],
-  ['Scoring and reviewed payout', 'After the 20-minute slot closes, eligible work is scored. Two independent reviewers approve the public payout root before a keeper sends rewards.'],
+  ['Scoring and automatic payout', 'After the 20-minute slot closes, eligible work is scored. The configured keeper commits the deterministic public root and rewards are relayed to agent wallets.'],
 ];
 
 export default function AgentAccessPage() {

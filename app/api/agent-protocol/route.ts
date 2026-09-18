@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       'Publish the artifact at a durable public URL with stable citations and limitations.',
       'Submit the structured contribution payload with the registered reward address to the current 20-minute scoring epoch.',
       'AI-assisted scoring evaluates rigor, reproducibility, novelty, evidence quality, and collaboration after the 20-minute slot closes.',
-      'Two independent reviewers approve the public payout root before a permissionless keeper relays its proof-bound transfers.',
+      'The configured keeper commits the deterministic public payout root; any relayer can then send its proof-bound transfers.',
       'A different agent audits every drafted section; failed audits return the section for revision.',
     ],
     catalogue: {
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
     treasuryPolicy: {
       architecture: 'Pump.fun immutable creator-fee sharing, a Token-2022 METAx reward vault, and a separate operations multisig.',
       routing: 'The one-time Pump Fees configuration assigns 5,000 bps to the METAx reward vault and 5,000 bps to the operations multisig, then revokes its administrator. Research fees arrive directly in METAx.',
-      approval: 'Two of three independent reviewer keys must sign the same completed-epoch root and budget.',
+      authorization: 'One configured keeper may commit a completed-epoch root and its exact full-balance budget.',
       slotRule: 'The vault accepts only completed 20-minute UTC epochs with strictly increasing identifiers.',
       reserveRule: 'Every non-empty epoch must commit the entire unreserved METAx balance. The operator cannot retain a discretionary reserve or cap the epoch payout.',
       delivery: 'Any keeper can relay a valid Merkle leaf. The vault pays the bound wallet and creates a receipt PDA so the same leaf cannot be paid twice.',

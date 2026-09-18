@@ -37,8 +37,9 @@ export async function distributeEpochRewards(epochId: number) {
   if (!epoch) return { status: 'missing_epoch', epochId };
   if (epoch.status !== 'scored') return { status: epoch.status, epochId };
 
-  const state = env.MUSE_TREASURY_ADDRESS && env.MUSE_REWARD_PROGRAM_ID
-    ? 'awaiting_reviewer_approvals'
+  const keeperAddress = env.MUSE_KEEPER_ADDRESS || env.MUSE_OPERATOR_ADDRESS;
+  const state = env.MUSE_TREASURY_ADDRESS && env.MUSE_REWARD_PROGRAM_ID && keeperAddress
+    ? 'awaiting_keeper_submission'
     : 'awaiting_protocol_deployment';
   await db.update(epochs).set({ distributionStatus: state }).where(eq(epochs.id, epochId));
   return { status: state, epochId };
@@ -60,6 +61,7 @@ export async function getOperatorStatus() {
   const recentEpochs = await db.select().from(epochs).orderBy(desc(epochs.id)).limit(12);
   const payouts = await db.select().from(epochPayouts).orderBy(desc(epochPayouts.createdAt)).limit(24);
   const nextBudget = balance ?? 0n;
+  const keeperAddress = env.MUSE_KEEPER_ADDRESS || env.MUSE_OPERATOR_ADDRESS || null;
 
   return {
     status: treasuryAddress ? 'solana_connected' : 'prelaunch',
@@ -67,16 +69,16 @@ export async function getOperatorStatus() {
     explorerUrl: 'https://solscan.io',
     treasuryAddress,
     tokenAddress: env.MUSE_REWARD_MINT || null,
-    operatorAddress: env.MUSE_OPERATOR_ADDRESS || null,
-    keeperConfigured: Boolean(env.MUSE_OPERATOR_ADDRESS && env.MUSE_REWARD_PROGRAM_ID),
-    keeperAuthorized: Boolean(env.MUSE_OPERATOR_ADDRESS && env.MUSE_TREASURY_ADDRESS && env.MUSE_REWARD_PROGRAM_ID),
+    operatorAddress: keeperAddress,
+    keeperConfigured: Boolean(keeperAddress && env.MUSE_REWARD_PROGRAM_ID),
+    keeperAuthorized: Boolean(keeperAddress && env.MUSE_TREASURY_ADDRESS && env.MUSE_REWARD_PROGRAM_ID),
     aiConfigured: Boolean(env.OPENAI_API_KEY),
     releaseBps: FULL_RELEASE_BPS,
     hardMaxReleaseBps: FULL_RELEASE_BPS,
     cadenceSeconds: CYCLE_MS / 1000,
     chain: balance === null ? null : {
       treasuryBalanceWei: balance.toString(), availableBalanceWei: balance.toString(), pendingOperationsPayoutWei: '0',
-      totalOperationsForwardedWei: '0', operationsWallet: env.MUSE_OPERATOR_ADDRESS || '', pendingWei: '0',
+      totalOperationsForwardedWei: '0', operationsWallet: keeperAddress || '', pendingWei: '0',
       maxPayoutWei: nextBudget.toString(), hardMaxPayoutWei: nextBudget.toString(),
       nextBudgetWei: nextBudget.toString(), reserveAfterNextWei: '0', totalDepositedWei: balance.toString(),
       totalScheduledWei: '0', totalDistributedWei: '0', latestEpoch: recentEpochs[0]?.id ?? 0,

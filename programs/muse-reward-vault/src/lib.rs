@@ -19,14 +19,13 @@ const MAX_PROOF_DEPTH: usize = 32;
 pub mod muse_reward_vault {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, reviewers: [Pubkey; 3]) -> Result<()> {
-        require!(reviewers.iter().all(|key| *key != Pubkey::default()), MuseError::InvalidReviewer);
-        require!(reviewers[0] != reviewers[1] && reviewers[0] != reviewers[2] && reviewers[1] != reviewers[2], MuseError::DuplicateReviewer);
+    pub fn initialize(ctx: Context<Initialize>, keeper: Pubkey) -> Result<()> {
+        require!(keeper != Pubkey::default(), MuseError::InvalidKeeper);
         let config = &mut ctx.accounts.config;
-        config.version = 1;
+        config.version = 2;
         config.bump = ctx.bumps.config;
         config.cadence_seconds = CADENCE_SECONDS;
-        config.reviewers = reviewers;
+        config.keeper = keeper;
         config.reward_mint = ctx.accounts.reward_mint.key();
         config.reward_token_program = ctx.accounts.reward_token_program.key();
         config.reward_decimals = ctx.accounts.reward_mint.decimals;
@@ -38,10 +37,9 @@ pub mod muse_reward_vault {
     }
 
     pub fn create_epoch(ctx: Context<CreateEpoch>, epoch_id: u64, root: [u8; 32], manifest_hash: [u8; 32], total_reward_units: u64, leaf_count: u32) -> Result<()> {
-        require!(ctx.accounts.reviewer_a.key() != ctx.accounts.reviewer_b.key(), MuseError::DuplicateReviewer);
-        require!(is_reviewer(&ctx.accounts.config, &ctx.accounts.reviewer_a.key()), MuseError::UnauthorizedReviewer);
-        require!(is_reviewer(&ctx.accounts.config, &ctx.accounts.reviewer_b.key()), MuseError::UnauthorizedReviewer);
         require!(total_reward_units > 0 && leaf_count > 0, MuseError::EmptyEpoch);
+        require!(root != [0; 32], MuseError::InvalidRoot);
+        require!(manifest_hash != [0; 32], MuseError::InvalidManifestHash);
         let current_epoch = (Clock::get()?.unix_timestamp / ctx.accounts.config.cadence_seconds) as u64;
         require!(epoch_id < current_epoch, MuseError::EpochStillOpen);
         require!(epoch_id > ctx.accounts.config.latest_epoch, MuseError::EpochOutOfOrder);
@@ -59,8 +57,7 @@ pub mod muse_reward_vault {
         epoch.leaf_count = leaf_count;
         epoch.claimed_count = 0;
         epoch.created_at = Clock::get()?.unix_timestamp;
-        epoch.reviewer_a = ctx.accounts.reviewer_a.key();
-        epoch.reviewer_b = ctx.accounts.reviewer_b.key();
+        epoch.keeper = ctx.accounts.keeper.key();
 
         let config = &mut ctx.accounts.config;
         config.latest_epoch = epoch_id;
@@ -110,8 +107,6 @@ pub mod muse_reward_vault {
     }
 }
 
-fn is_reviewer(config: &Config, key: &Pubkey) -> bool { config.reviewers.iter().any(|reviewer| reviewer == key) }
-
 fn payout_leaf(epoch_id: u64, index: u32, recipient: &Pubkey, amount: u64) -> [u8; 32] {
     hashv(&[LEAF_DOMAIN, &epoch_id.to_le_bytes(), &index.to_le_bytes(), recipient.as_ref(), &amount.to_le_bytes()]).to_bytes()
 }
@@ -144,11 +139,10 @@ pub struct CreateEpoch<'info> {
     pub reward_mint: InterfaceAccount<'info, Mint>,
     #[account(associated_token::mint = reward_mint, associated_token::authority = config, associated_token::token_program = reward_token_program)]
     pub reward_vault: InterfaceAccount<'info, TokenAccount>,
-    #[account(init, payer = reviewer_a, space = 8 + Epoch::INIT_SPACE, seeds = [EPOCH_SEED, &epoch_id.to_le_bytes()], bump)]
+    #[account(init, payer = keeper, space = 8 + Epoch::INIT_SPACE, seeds = [EPOCH_SEED, &epoch_id.to_le_bytes()], bump)]
     pub epoch: Account<'info, Epoch>,
-    #[account(mut)]
-    pub reviewer_a: Signer<'info>,
-    pub reviewer_b: Signer<'info>,
+    #[account(mut, address = config.keeper @ MuseError::UnauthorizedKeeper)]
+    pub keeper: Signer<'info>,
     #[account(address = config.reward_token_program)]
     pub reward_token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
@@ -185,7 +179,7 @@ pub struct Config {
     pub version: u8,
     pub bump: u8,
     pub cadence_seconds: i64,
-    pub reviewers: [Pubkey; 3],
+    pub keeper: Pubkey,
     pub reward_mint: Pubkey,
     pub reward_token_program: Pubkey,
     pub reward_decimals: u8,
@@ -208,8 +202,7 @@ pub struct Epoch {
     pub leaf_count: u32,
     pub claimed_count: u32,
     pub created_at: i64,
-    pub reviewer_a: Pubkey,
-    pub reviewer_b: Pubkey,
+    pub keeper: Pubkey,
 }
 
 #[account]
@@ -225,12 +218,13 @@ pub struct Receipt {
 
 #[error_code]
 pub enum MuseError {
-    #[msg("Reviewer keys must be non-zero.")] InvalidReviewer,
-    #[msg("Reviewer keys or signatures must be distinct.")] DuplicateReviewer,
-    #[msg("Signer is not a configured reviewer.")] UnauthorizedReviewer,
+    #[msg("Keeper key must be non-zero.")] InvalidKeeper,
+    #[msg("Signer is not the configured keeper.")] UnauthorizedKeeper,
     #[msg("Epoch must contain a positive payout.")] EmptyEpoch,
     #[msg("Epoch is still open.")] EpochStillOpen,
     #[msg("Epoch ids must increase.")] EpochOutOfOrder,
+    #[msg("Merkle root must be non-zero.")] InvalidRoot,
+    #[msg("Manifest hash must be non-zero.")] InvalidManifestHash,
     #[msg("Each epoch must commit the entire unreserved METAx balance.")] MustCommitAllUnreservedFunds,
     #[msg("Invalid Merkle proof.")] InvalidProof,
     #[msg("Merkle proof is too deep.")] ProofTooDeep,

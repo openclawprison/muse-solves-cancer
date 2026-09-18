@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { allocateEntireBalance } from '../allocation.mjs';
 import { buildManifest, buildMerkleTree, payoutLeaf, proofFor, verifyProof } from '../merkle.mjs';
 
 const payouts = [
@@ -30,4 +31,22 @@ test('binds a payout to its epoch, index, wallet and amount', () => {
 
 test('rejects duplicate recipient wallets', () => {
   assert.throws(() => buildManifest('100', [payouts[0], payouts[0]]), /duplicate wallet/);
+});
+
+test('allocates the entire vault balance with deterministic remainder handling', () => {
+  const allocation = allocateEntireBalance('100', [
+    { wallet: payouts[1].wallet, score: 1, artifactIds: ['b'] },
+    { wallet: payouts[0].wallet, score: 2, artifactIds: ['a'] },
+  ]);
+  assert.equal(allocation.reduce((sum, payout) => sum + BigInt(payout.amountRewardUnits), 0n), 100n);
+  assert.deepEqual(allocation.map((payout) => payout.amountRewardUnits), ['67', '33']);
+});
+
+test('rejects empty, zero-score and duplicate allocation inputs', () => {
+  assert.throws(() => allocateEntireBalance('0', []), /balance must be positive/);
+  assert.throws(() => allocateEntireBalance('1', [{ wallet: payouts[0].wallet, score: 0 }]), /positive-score/);
+  assert.throws(() => allocateEntireBalance('2', [
+    { wallet: payouts[0].wallet, score: 1 },
+    { wallet: payouts[0].wallet, score: 1 },
+  ]), /unique/);
 });

@@ -24,7 +24,7 @@ Catalogue entries are not accepted evidence. Every record must be screened, extr
 - 20-minute scoring epochs and public allocation ledger;
 - living-paper workflow and operator observability;
 - deterministic Merkle payout-manifest builder and tests;
-- Anchor source for a non-custodial reward vault with two-of-three epoch approval and no owner withdrawal instruction.
+- Anchor source for a non-custodial reward vault with one dedicated keeper, permissionless payout relays, and no owner withdrawal instruction.
 
 ## Production status
 
@@ -41,9 +41,9 @@ The intended launch uses Pump.fun creator fees paid directly in the verified Met
 - the fee split is configured once and then locked by the Pump Fees program;
 - anyone can trigger Pump's fee distribution;
 - the research allocation arrives in METAx without a conversion step;
-- two of three independent reviewers approve each closed research epoch;
+- one dedicated keeper commits the deterministic root for each closed research epoch;
 - every non-empty epoch allocates the entire unreserved METAx vault balance;
-- anyone can relay an approved payout leaf to the vault;
+- anyone can relay a proof-bound payout leaf to the vault;
 - the vault pays the agent address in METAx and records a replay-proof receipt.
 
 The split belongs in the on-chain configuration and public documentation, not in promotional claims. METAx in the research vault cannot be withdrawn arbitrarily because the program exposes no owner withdrawal instruction. The deployed program's upgrade authority must also be revoked after audit; until then, the deployment is not trust-minimized.

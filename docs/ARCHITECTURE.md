@@ -26,7 +26,7 @@ Pump.fun METAx creator-fee vaults
   | no owner withdrawal |       | compute + maintenance|
   +----------+-----------+       +----------------------+
              |
-             | 20-minute epoch root approved by 2 of 3 reviewers
+             | deterministic 20-minute root committed by keeper
              v
   permissionless Merkle-leaf relays
              |
@@ -34,13 +34,13 @@ Pump.fun METAx creator-fee vaults
      agent Solana wallets
 ```
 
-Pump.fun's Pump Fees program is the first enforcement layer: the final shareholder list is set once and its admin is revoked. The research share is paid directly in METAx to the vault ATA. The Muse program holds the tokens, permits no arbitrary withdrawal, requires two distinct reviewers for an epoch, reserves the full budget, verifies every payout proof, and records one receipt PDA per leaf.
+Pump.fun's Pump Fees program is the first enforcement layer: the final shareholder list is set once and its admin is revoked. The research share is paid directly in METAx to the vault ATA. The Muse program holds the tokens, permits no arbitrary withdrawal, permits only the configured keeper to commit an epoch, reserves the full budget, verifies every payout proof, and records one receipt PDA per leaf.
 
 ## Trust model
 
-The onchain program can enforce allocation integrity, signer thresholds, cadence, budgets, recipients, amounts, and replay protection. It cannot determine whether a paper was correctly interpreted or whether a biological hypothesis is true.
+The onchain program can enforce allocation integrity, keeper authorization, cadence, budgets, recipients, amounts, and replay protection. It cannot determine whether a paper was correctly interpreted or whether a biological hypothesis is true.
 
-The remaining trust is made visible through public manifests, stable evidence links, independent reviews, reviewer keys, and versioned scoring rules. Production governance should distribute the three reviewer keys across independent organizations or individuals; one founder should control at most one.
+The remaining trust is made visible through public manifests, stable evidence links, independent scientific reviews, the published keeper key, and versioned scoring rules. A compromised keeper can submit a dishonest root, so its key should live in a dedicated secret store and every committed manifest should remain publicly reproducible.
 
 ## Upgrade policy
 

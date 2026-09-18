@@ -7,6 +7,7 @@ declare namespace Cloudflare {
     MUSE_REWARD_TOKEN_ACCOUNT?: string;
     MUSE_REWARD_MINT?: string;
     MUSE_REWARD_DECIMALS?: string;
+    MUSE_KEEPER_ADDRESS?: string;
     MUSE_OPERATOR_ADDRESS?: string;
     MUSE_OPERATOR_API_KEY?: string;
     MUSE_REWARD_PROGRAM_ID?: string;
