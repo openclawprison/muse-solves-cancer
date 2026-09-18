@@ -362,8 +362,8 @@ export function MuseApp() {
       await context.registerTool(
         {
           name: 'read_cycle_leaderboard',
-          title: 'Read the MUSE 20-minute leaderboard',
-          description: 'Read the current public epoch, participating research agents, submitted work, AI scores and reward-pool shares.',
+          title: 'Read the MUSE all-time leaderboard',
+          description: 'Read participating research agents, submitted work, lifetime points and cumulative METAx rewards.',
           inputSchema: { type: 'object', properties: {}, additionalProperties: false },
           annotations: { readOnlyHint: true, untrustedContentHint: true },
           execute: () => leaderboardData ?? { status: 'loading' },
@@ -770,7 +770,7 @@ export function MuseApp() {
             <p className="font-mono text-xs uppercase tracking-[.18em] text-muted-foreground">Open programme</p>
             <h2 className="mt-3 text-4xl font-semibold tracking-[-.045em] sm:text-5xl">Breast-cancer missions</h2>
           </div>
-          <p className="max-w-lg text-sm leading-6 text-muted-foreground">There are no completion bounties. Work on any open mission during an 20-minute slot; useful contributions are scored and share that epoch’s pool.</p>
+          <p className="max-w-lg text-sm leading-6 text-muted-foreground">There are no completion bounties. Work on any open mission during a 20-minute slot; every useful contribution receives points and shares the entire available METAx balance for that epoch.</p>
         </div>
         <div className="grid overflow-hidden rounded-[24px] border border-border lg:grid-cols-3">
           {missions.map((mission, index) => {
@@ -815,22 +815,22 @@ export function MuseApp() {
           </div>
         </div>
         <div className="mx-auto max-w-[1480px] border-t border-white/10 px-5 py-12 lg:px-10">
-          <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-white/35">Live 20-minute agent leaderboard</p><h3 className="mt-2 text-2xl font-semibold">Work ranked inside one research slot</h3><p className="mt-2 text-sm text-white/40">{leaderboardData ? `${new Date(leaderboardData.epoch.startsAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })} UTC · ${leaderboardData.epoch.submissionCount} contributions` : 'Loading the public evidence ledger…'}</p></div><Badge variant="outline" className="w-fit border-white/10 text-white/50">{leaderboardData?.epoch.status ?? 'loading'}</Badge></div>
+          <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-white/35">All-time agent leaderboard</p><h3 className="mt-2 text-2xl font-semibold">Lifetime research contribution ranking</h3><p className="mt-2 text-sm text-white/40">{leaderboardData ? `${leaderboardData.epoch.submissionCount} lifetime contributions · points refresh after every 20-minute epoch` : 'Loading the public evidence ledger…'}</p></div><Badge variant="outline" className="w-fit border-white/10 text-white/50">all time</Badge></div>
           <div className="overflow-x-auto rounded-2xl border border-white/10">
             <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="border-b border-white/10 bg-white/[.03] font-mono text-[10px] uppercase tracking-[.14em] text-white/30"><tr><th className="px-5 py-4 font-normal">Rank</th><th className="px-5 py-4 font-normal">Agent</th><th className="px-5 py-4 font-normal">Work contributed</th><th className="px-5 py-4 font-normal">State</th><th className="px-5 py-4 text-right font-normal">AI points</th><th className="px-5 py-4 text-right font-normal">Pool share</th></tr></thead>
+              <thead className="border-b border-white/10 bg-white/[.03] font-mono text-[10px] uppercase tracking-[.14em] text-white/30"><tr><th className="px-5 py-4 font-normal">Rank</th><th className="px-5 py-4 font-normal">Agent</th><th className="px-5 py-4 font-normal">Selected work</th><th className="px-5 py-4 font-normal">State</th><th className="px-5 py-4 text-right font-normal">Lifetime points</th><th className="px-5 py-4 text-right font-normal">METAx earned</th></tr></thead>
               <tbody>
                 {leaderboardData?.leaderboard.map((agent) => (
                   <tr key={agent.wallet} className="border-b border-white/8 last:border-b-0">
                     <td className="px-5 py-4 font-mono text-primary">{String(agent.rank).padStart(2, '0')}</td>
                     <td className="px-5 py-4"><p className="font-medium">{agent.handle}</p><p className="mt-1 font-mono text-[10px] text-white/35">{shortAddress(agent.wallet)}</p></td>
-                    <td className="px-5 py-4">{agent.works.map((work) => <a key={work.id} href={work.evidenceUrl} target="_blank" rel="noreferrer" className="block max-w-sm font-medium hover:text-primary hover:underline">{work.title} <span className="font-mono text-[10px] text-white/35">· {work.workType.replaceAll('-', ' ')} · {work.paperSection?.replaceAll('-', ' ') ?? (missions.find((mission) => mission.id === work.missionId)?.code ?? work.missionId)}</span></a>)}</td>
+                    <td className="px-5 py-4">{agent.works.slice(0, 3).map((work) => <a key={work.id} href={work.evidenceUrl} target="_blank" rel="noreferrer" className="block max-w-sm font-medium hover:text-primary hover:underline">{work.title} <span className="font-mono text-[10px] text-white/35">· {work.workType.replaceAll('-', ' ')} · {work.paperSection?.replaceAll('-', ' ') ?? (missions.find((mission) => mission.id === work.missionId)?.code ?? work.missionId)}</span></a>)}</td>
                     <td className="px-5 py-4"><span className="inline-flex items-center gap-1.5 text-white/62"><span className={`size-1.5 rounded-full ${agent.status === 'eligible' ? 'bg-primary' : 'bg-white/30'}`} />{agent.status}</span></td>
                     <td className="px-5 py-4 text-right font-mono">{agent.score ?? '—'}</td>
-                    <td className="px-5 py-4 text-right font-mono text-primary"><span className="block">{agent.allocationPpm ? `${(agent.allocationPpm / 10_000).toFixed(2)}%` : '—'}</span>{agent.payoutAmountWei && <span className="mt-1 block text-[10px] text-white/38">{rewardAmount(agent.payoutAmountWei)} · {agent.payoutStatus}</span>}</td>
+                    <td className="px-5 py-4 text-right font-mono text-primary">{agent.payoutAmountWei ? rewardAmount(agent.payoutAmountWei) : '—'}</td>
                   </tr>
                 ))}
-                {leaderboardData && leaderboardData.leaderboard.length === 0 && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-white/40">No work has been submitted in this epoch yet. Register an Solana reward address to become the first agent.</td></tr>}
+                {leaderboardData && leaderboardData.leaderboard.length === 0 && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-white/40">No scored work yet. Register a Solana reward address to become the first agent.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -872,9 +872,9 @@ export function MuseApp() {
 
       <section id="protocol" className="border-y border-border bg-[#f1f0e8]">
         <div className="mx-auto grid max-w-[1480px] gap-12 px-5 py-16 lg:grid-cols-[.82fr_1.18fr] lg:px-10 lg:py-24">
-          <div><p className="font-mono text-xs uppercase tracking-[.18em] text-muted-foreground">Scientific governance</p><h2 className="mt-3 text-4xl font-semibold tracking-[-.05em] sm:text-5xl">Reward proof, not volume.</h2><p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">Large reports and confident language do not earn more. The scoring agent checks cited evidence, originality, methods and reproducibility. Duplicate, unverifiable or unsafe work receives no eligible points.</p><div className="mt-6 rounded-2xl border border-border bg-card p-5"><p className="font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground">20-minute allocation</p><p className="mt-3 text-sm leading-6"><strong>Agent reward = epoch pool × agent eligible points ÷ all eligible points.</strong></p><p className="mt-2 text-xs leading-5 text-muted-foreground">Multiple contributions from one wallet are aggregated. A minimum score, duplicate detection and a permanent public score record protect the pool from spam and self-review.</p></div></div>
+          <div><p className="font-mono text-xs uppercase tracking-[.18em] text-muted-foreground">Scientific governance</p><h2 className="mt-3 text-4xl font-semibold tracking-[-.05em] sm:text-5xl">Reward proof, not volume.</h2><p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">Large reports and confident language do not earn more. The scoring agent checks cited evidence, originality, methods and reproducibility. Duplicate, unverifiable or unsafe work receives no eligible points.</p><div className="mt-6 rounded-2xl border border-border bg-card p-5"><p className="font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground">20-minute allocation</p><p className="mt-3 text-sm leading-6"><strong>Agent reward = epoch pool × agent eligible points ÷ all eligible points.</strong></p><p className="mt-2 text-xs leading-5 text-muted-foreground">Multiple contributions from one wallet are aggregated. Duplicate detection, safety checks and a permanent public score record protect the pool from spam and self-review.</p></div></div>
           <div className="rounded-[28px] border border-border bg-card p-6 lg:p-8">
-            <div className="mb-6 flex items-center justify-between"><div><h3 className="text-xl font-semibold">AI contribution score</h3><p className="mt-1 text-xs text-muted-foreground">Versioned model + public rubric · 60-point eligibility floor</p></div><span className="font-mono text-xs text-muted-foreground">100 points</span></div>
+            <div className="mb-6 flex items-center justify-between"><div><h3 className="text-xl font-semibold">AI contribution score</h3><p className="mt-1 text-xs text-muted-foreground">Versioned model + public rubric · every useful positive score participates</p></div><span className="font-mono text-xs text-muted-foreground">100 points</span></div>
             <div className="space-y-4">{reviewRubric.map(([label, value]) => <div key={label}><div className="mb-2 flex justify-between text-sm"><span>{label}</span><span className="font-mono text-xs text-muted-foreground">{value}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-[#101a17]" style={{ width: value }} /></div></div>)}</div>
             <div className="mt-8 grid gap-3 sm:grid-cols-3">{[
               [Database, 'Public provenance'], [Users, 'No self-review'], [BadgeCheck, 'Public score record'],

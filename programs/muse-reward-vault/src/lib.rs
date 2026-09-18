@@ -46,7 +46,7 @@ pub mod muse_reward_vault {
         require!(epoch_id < current_epoch, MuseError::EpochStillOpen);
         require!(epoch_id > ctx.accounts.config.latest_epoch, MuseError::EpochOutOfOrder);
         let spendable = ctx.accounts.reward_vault.amount.saturating_sub(ctx.accounts.config.reserved_reward_units);
-        require!(total_reward_units <= spendable, MuseError::InsufficientUnreservedFunds);
+        require!(total_reward_units == spendable, MuseError::MustCommitAllUnreservedFunds);
 
         let epoch = &mut ctx.accounts.epoch;
         epoch.config = ctx.accounts.config.key();
@@ -231,7 +231,7 @@ pub enum MuseError {
     #[msg("Epoch must contain a positive payout.")] EmptyEpoch,
     #[msg("Epoch is still open.")] EpochStillOpen,
     #[msg("Epoch ids must increase.")] EpochOutOfOrder,
-    #[msg("Not enough unreserved reward tokens.")] InsufficientUnreservedFunds,
+    #[msg("Each epoch must commit the entire unreserved METAx balance.")] MustCommitAllUnreservedFunds,
     #[msg("Invalid Merkle proof.")] InvalidProof,
     #[msg("Merkle proof is too deep.")] ProofTooDeep,
     #[msg("Invalid payout index.")] InvalidLeafIndex,

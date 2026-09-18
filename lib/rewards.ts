@@ -5,14 +5,8 @@ import { epochPayouts, epochs } from '@/db/schema';
 import { settleNextEpoch } from '@/lib/scoring';
 
 const CYCLE_MS = 20 * 60 * 1000;
-const DEFAULT_RELEASE_BPS = 100;
-const HARD_MAX_RELEASE_BPS = 2_500;
+const FULL_RELEASE_BPS = 10_000;
 const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
-
-function releaseBps() {
-  const value = Number(env.MUSE_HOURLY_RELEASE_BPS ?? DEFAULT_RELEASE_BPS);
-  return Number.isInteger(value) ? Math.min(Math.max(value, 1), HARD_MAX_RELEASE_BPS) : DEFAULT_RELEASE_BPS;
-}
 
 async function rewardTokenBalance(address?: string) {
   if (!address) return null;
@@ -65,8 +59,7 @@ export async function getOperatorStatus() {
   const balance = await rewardTokenBalance(env.MUSE_REWARD_TOKEN_ACCOUNT).catch(() => null);
   const recentEpochs = await db.select().from(epochs).orderBy(desc(epochs.id)).limit(12);
   const payouts = await db.select().from(epochPayouts).orderBy(desc(epochPayouts.createdAt)).limit(24);
-  const configuredBps = releaseBps();
-  const nextBudget = balance === null ? 0n : (balance * BigInt(configuredBps)) / 10_000n;
+  const nextBudget = balance ?? 0n;
 
   return {
     status: treasuryAddress ? 'solana_connected' : 'prelaunch',
@@ -78,14 +71,14 @@ export async function getOperatorStatus() {
     keeperConfigured: Boolean(env.MUSE_OPERATOR_ADDRESS && env.MUSE_REWARD_PROGRAM_ID),
     keeperAuthorized: Boolean(env.MUSE_OPERATOR_ADDRESS && env.MUSE_TREASURY_ADDRESS && env.MUSE_REWARD_PROGRAM_ID),
     aiConfigured: Boolean(env.OPENAI_API_KEY),
-    releaseBps: configuredBps,
-    hardMaxReleaseBps: HARD_MAX_RELEASE_BPS,
+    releaseBps: FULL_RELEASE_BPS,
+    hardMaxReleaseBps: FULL_RELEASE_BPS,
     cadenceSeconds: CYCLE_MS / 1000,
     chain: balance === null ? null : {
       treasuryBalanceWei: balance.toString(), availableBalanceWei: balance.toString(), pendingOperationsPayoutWei: '0',
       totalOperationsForwardedWei: '0', operationsWallet: env.MUSE_OPERATOR_ADDRESS || '', pendingWei: '0',
-      maxPayoutWei: nextBudget.toString(), hardMaxPayoutWei: ((balance * BigInt(HARD_MAX_RELEASE_BPS)) / 10_000n).toString(),
-      nextBudgetWei: nextBudget.toString(), reserveAfterNextWei: (balance - nextBudget).toString(), totalDepositedWei: balance.toString(),
+      maxPayoutWei: nextBudget.toString(), hardMaxPayoutWei: nextBudget.toString(),
+      nextBudgetWei: nextBudget.toString(), reserveAfterNextWei: '0', totalDepositedWei: balance.toString(),
       totalScheduledWei: '0', totalDistributedWei: '0', latestEpoch: recentEpochs[0]?.id ?? 0,
       currentPayoutEpoch: Math.floor(Date.now() / CYCLE_MS) - 1, paused: false,
     },

@@ -42,6 +42,7 @@ The intended launch uses Pump.fun creator fees paid directly in the verified Met
 - anyone can trigger Pump's fee distribution;
 - the research allocation arrives in METAx without a conversion step;
 - two of three independent reviewers approve each closed research epoch;
+- every non-empty epoch allocates the entire unreserved METAx vault balance;
 - anyone can relay an approved payout leaf to the vault;
 - the vault pays the agent address in METAx and records a replay-proof receipt.
 

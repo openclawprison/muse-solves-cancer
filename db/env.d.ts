@@ -11,7 +11,6 @@ declare namespace Cloudflare {
     MUSE_OPERATOR_API_KEY?: string;
     MUSE_REWARD_PROGRAM_ID?: string;
     MUSE_CHAIN_RPC_URL?: string;
-    MUSE_HOURLY_RELEASE_BPS?: string;
     MUSE_TOKEN_ADDRESS?: string;
   }
 }

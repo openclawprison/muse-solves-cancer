@@ -5,21 +5,15 @@ import { agents, epochPayouts, epochs, submissions } from '@/db/schema';
 
 const HOUR_MS = 20 * 60 * 1000;
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const requested = url.searchParams.get('epoch');
+export async function GET() {
   const currentEpoch = Math.floor(Date.now() / HOUR_MS);
-  let epochId = requested ? Number(requested) : Number.NaN;
   const db = getDb();
-
-  if (!Number.isInteger(epochId) || epochId < 0) {
-    const latest = await db
-      .select({ epochId: submissions.epochId })
-      .from(submissions)
-      .orderBy(desc(submissions.epochId))
-      .limit(1);
-    epochId = latest[0]?.epochId ?? currentEpoch;
-  }
+  const latest = await db
+    .select({ epochId: submissions.epochId })
+    .from(submissions)
+    .orderBy(desc(submissions.epochId))
+    .limit(1);
+  const epochId = latest[0]?.epochId ?? currentEpoch;
 
   const [epoch] = await db.select().from(epochs).where(eq(epochs.id, epochId)).limit(1);
   const rows = await db
@@ -40,7 +34,6 @@ export async function GET(request: Request) {
     })
     .from(submissions)
     .leftJoin(agents, eq(submissions.wallet, agents.wallet))
-    .where(eq(submissions.epochId, epochId))
     .orderBy(desc(submissions.score), desc(submissions.createdAt));
 
   const byWallet = new Map<
@@ -82,13 +75,21 @@ export async function GET(request: Request) {
   const leaderboard = [...byWallet.values()]
     .sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
     .map((item, index) => ({ rank: index + 1, ...item }));
-  const payoutRows = await db.select().from(epochPayouts).where(eq(epochPayouts.epochId, epochId));
-  const payoutsByWallet = new Map(payoutRows.map((row) => [row.wallet.toLowerCase(), row]));
+  const payoutRows = await db.select().from(epochPayouts);
+  const payoutsByWallet = new Map<string, { amountWei: bigint; status: string | null; txHash: string | null }>();
+  for (const payout of payoutRows) {
+    const key = payout.wallet.toLowerCase();
+    const existing = payoutsByWallet.get(key) ?? { amountWei: 0n, status: null, txHash: null };
+    existing.amountWei += BigInt(payout.amountWei);
+    existing.status = payout.status;
+    existing.txHash = payout.txHash;
+    payoutsByWallet.set(key, existing);
+  }
   const leaderboardWithPayouts = leaderboard.map((item) => {
     const payout = payoutsByWallet.get(item.wallet.toLowerCase());
     return {
       ...item,
-      payoutAmountWei: payout?.amountWei ?? null,
+      payoutAmountWei: payout ? payout.amountWei.toString() : null,
       payoutStatus: payout?.status ?? null,
       payoutTxHash: payout?.txHash ?? null,
     };

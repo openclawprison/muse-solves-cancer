@@ -22,7 +22,7 @@ The reward vault intentionally has no owner withdrawal instruction. Before produ
 - only completed 20-minute epochs can be committed;
 - epoch IDs strictly increase;
 - two distinct configured reviewers must approve each epoch;
-- committed payouts cannot exceed unreserved vault funds;
+- every non-empty epoch commits the entire unreserved METAx balance, leaving no discretionary reserve;
 - a payout is cryptographically bound to epoch, index, wallet, and METAx base-unit amount;
 - one receipt PDA per leaf prevents replay;
 - the config account remains rent-exempt;
