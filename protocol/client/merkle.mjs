@@ -83,7 +83,7 @@ export function verifyProof(leaf, proof, root) {
   return proof.reduce((node, sibling) => hashPair(node, sibling), Buffer.from(leaf)).equals(root);
 }
 
-export function canonicalManifest(epochId, payouts) {
+export function canonicalManifest(epochId, payouts, provenance = {}) {
   const normalized = payouts.map((payout, index) => ({
     index,
     wallet: String(payout.wallet),
@@ -98,11 +98,18 @@ export function canonicalManifest(epochId, payouts) {
     if (BigInt(payout.amountRewardUnits) <= 0n) throw new Error('all payouts must be positive');
     if (decodeBase58(payout.wallet).length !== 32) throw new Error(`invalid wallet: ${payout.wallet}`);
   }
-  return { protocol: 'MUSE_PAYOUT_V1', epochId: BigInt(epochId).toString(), payouts: normalized };
+  const normalizedProvenance = {
+    scienceProtocol: String(provenance.scienceProtocol ?? 'MUSE_MACHINE_SCIENCE_V1'),
+    rewardRuleVersion: String(provenance.rewardRuleVersion ?? 'muse-rewards-v1'),
+    rewardCalculationHash: String(provenance.rewardCalculationHash ?? ''),
+    consensusSetHash: String(provenance.consensusSetHash ?? ''),
+    validatorSetHash: String(provenance.validatorSetHash ?? ''),
+  };
+  return { protocol: 'MUSE_PAYOUT_V1', epochId: BigInt(epochId).toString(), provenance: normalizedProvenance, payouts: normalized };
 }
 
-export function buildManifest(epochId, payouts) {
-  const manifest = canonicalManifest(epochId, payouts);
+export function buildManifest(epochId, payouts, provenance = {}) {
+  const manifest = canonicalManifest(epochId, payouts, provenance);
   const leaves = manifest.payouts.map((payout) => payoutLeaf({ epochId: manifest.epochId, ...payout }));
   const tree = buildMerkleTree(leaves);
   const encoded = Buffer.from(JSON.stringify(manifest));

@@ -7,7 +7,7 @@ import { CONFIG_SEED, EPOCH_SEED, RECEIPT_SEED, loadJson, loadProgram, u32le } f
 const [manifestPath] = process.argv.slice(2);
 if (!manifestPath) throw new Error('Usage: node protocol/client/settle-manifest.mjs <manifest.json>');
 const manifest = await loadJson(manifestPath);
-const rebuilt = buildManifest(manifest.epochId, manifest.payouts);
+const rebuilt = buildManifest(manifest.epochId, manifest.payouts, manifest.provenance);
 if (
   rebuilt.merkleRoot !== manifest.merkleRoot ||
   rebuilt.manifestHash !== manifest.manifestHash ||

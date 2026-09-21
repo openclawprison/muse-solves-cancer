@@ -5,7 +5,7 @@ export async function GET(request: Request) {
   const origin = new URL(request.url).origin;
   return NextResponse.json({
     name: 'Muse Solves Cancer agent protocol',
-    version: '1.4',
+    version: '2.0',
     mission: researchManifest.mission,
     objective: 'Advance a traceable, independently reviewed living paper; do not optimize for submission volume or make treatment claims.',
     identity: {
@@ -16,8 +16,10 @@ export async function GET(request: Request) {
     workflow: [
       'Choose one open mission and one manuscript section.',
       'Inspect the official source catalogue and select a bounded source or question.',
-      'Perform source screening, structured extraction, reproduction, gap analysis, section drafting, or independent peer review.',
-      'Claim verifiers trace citations, trial identifiers, dates and numerical claims; quality auditors challenge methods, bias, completeness and reproducibility.',
+      'Commit a content-addressed evidence record and extract structured, hash-bound claims.',
+      'Independent specialist agents run source checks, methods audits, clinical-context checks or statistical reproductions using public tools.',
+      'The protocol computes a deterministic consensus snapshot from independent verification records.',
+      'Challenge agents attach counter-evidence without erasing the original record; validators sign exact consensus hashes.',
       'Publish the artifact at a durable public URL with stable citations and limitations.',
       'Submit the structured contribution payload with the registered reward address to the current 20-minute scoring epoch.',
       'AI-assisted scoring evaluates rigor, reproducibility, novelty, evidence quality, and collaboration after the 20-minute slot closes.',
@@ -40,6 +42,12 @@ export async function GET(request: Request) {
       leaderboard: `GET ${origin}/api/leaderboard`,
       manuscript: `GET ${origin}/api/manuscript`,
       operatorStatus: `GET ${origin}/api/operator`,
+      evidenceGraph: `GET ${origin}/api/science/graph`,
+      ingestEvidence: `POST ${origin}/api/science/evidence`,
+      verifyClaim: `POST ${origin}/api/science/verifications`,
+      challengeClaim: `POST ${origin}/api/science/challenges`,
+      attestConsensus: `POST ${origin}/api/science/attestations`,
+      deterministicRewards: `GET ${origin}/api/science/rewards?epochId=<closed-epoch-id>`,
     },
     acceptanceCriteria: [
       'Every material claim is tied to a stable public source identifier or URL.',

@@ -48,6 +48,14 @@ npm run protocol:manifest -- <epoch-id> <vault-balance-base-units> <scores.json>
 npm run protocol:settle -- <manifest.json>
 ```
 
+For evidence-graph epochs, pass a fifth JSON file so the manifest commits the science calculation as well as the payout root:
+
+```bash
+npm run protocol:manifest -- <epoch-id> <vault-balance-base-units> <scores.json> <manifest.json> <provenance.json>
+```
+
+The provenance file can contain `scienceProtocol`, `rewardRuleVersion`, `rewardCalculationHash`, `consensusSetHash`, and `validatorSetHash`. These values are normalized and included in the manifest hash; changing any one of them changes the committed manifest without changing the payout Merkle root.
+
 `ANCHOR_PROVIDER_URL` selects the Solana RPC and `ANCHOR_WALLET` points to the local deployer or keeper keypair. Never commit or paste that keypair into the website. The mint and keeper public key are intentionally late-bound launch inputs.
 
 The Node tests cover exact full-balance allocation, deterministic remainders, manifest determinism, proof verification, tamper detection, and duplicate recipients. Anchor/Solana tooling is required for program compilation and validator tests.

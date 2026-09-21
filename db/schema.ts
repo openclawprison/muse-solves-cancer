@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const agents = sqliteTable(
   'agents',
@@ -110,3 +110,160 @@ export const manuscriptRuns = sqliteTable('manuscript_runs', {
   startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
   completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
 });
+
+export const evidenceSources = sqliteTable(
+  'evidence_sources',
+  {
+    hash: text('hash').primaryKey(),
+    sourceType: text('source_type').notNull(),
+    externalId: text('external_id').notNull(),
+    canonicalUrl: text('canonical_url').notNull(),
+    title: text('title').notNull(),
+    contentHash: text('content_hash').notNull(),
+    metadataJson: text('metadata_json').notNull().default('{}'),
+    ingestedByWallet: text('ingested_by_wallet').notNull().references(() => agents.wallet),
+    ingestedAt: integer('ingested_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('idx_evidence_source_identity').on(table.sourceType, table.externalId, table.contentHash),
+    index('idx_evidence_ingested_at').on(table.ingestedAt),
+  ],
+);
+
+export const claims = sqliteTable(
+  'claims',
+  {
+    id: text('id').primaryKey(),
+    evidenceHash: text('evidence_hash').notNull().references(() => evidenceSources.hash),
+    extractorWallet: text('extractor_wallet').notNull().references(() => agents.wallet),
+    submissionId: text('submission_id'),
+    claimType: text('claim_type').notNull(),
+    claimText: text('claim_text').notNull(),
+    structuredJson: text('structured_json').notNull().default('{}'),
+    extractionHash: text('extraction_hash').notNull(),
+    epochId: integer('epoch_id').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    index('idx_claims_evidence').on(table.evidenceHash),
+    index('idx_claims_epoch').on(table.epochId),
+    index('idx_claims_extractor').on(table.extractorWallet),
+  ],
+);
+
+export const claimEdges = sqliteTable(
+  'claim_edges',
+  {
+    id: text('id').primaryKey(),
+    sourceClaimId: text('source_claim_id').notNull().references(() => claims.id),
+    targetClaimId: text('target_claim_id').notNull().references(() => claims.id),
+    relation: text('relation').notNull(),
+    rationale: text('rationale').notNull(),
+    creatorWallet: text('creator_wallet').notNull().references(() => agents.wallet),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('idx_claim_edges_unique').on(table.sourceClaimId, table.targetClaimId, table.relation),
+    index('idx_claim_edges_target').on(table.targetClaimId),
+  ],
+);
+
+export const verificationRuns = sqliteTable(
+  'verification_runs',
+  {
+    id: text('id').primaryKey(),
+    claimId: text('claim_id').notNull().references(() => claims.id),
+    verifierWallet: text('verifier_wallet').notNull().references(() => agents.wallet),
+    specialization: text('specialization').notNull(),
+    method: text('method').notNull(),
+    toolName: text('tool_name').notNull(),
+    result: text('result').notNull(),
+    confidenceBps: integer('confidence_bps').notNull(),
+    inputHash: text('input_hash').notNull(),
+    outputHash: text('output_hash').notNull(),
+    artifactUrl: text('artifact_url').notNull(),
+    metricsJson: text('metrics_json').notNull().default('{}'),
+    epochId: integer('epoch_id').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('idx_verification_claim_wallet').on(table.claimId, table.verifierWallet),
+    index('idx_verification_epoch').on(table.epochId),
+    index('idx_verification_claim').on(table.claimId),
+  ],
+);
+
+export const consensusSnapshots = sqliteTable(
+  'consensus_snapshots',
+  {
+    id: text('id').primaryKey(),
+    claimId: text('claim_id').notNull().references(() => claims.id),
+    algorithmVersion: text('algorithm_version').notNull(),
+    verdict: text('verdict').notNull(),
+    confidenceBps: integer('confidence_bps').notNull(),
+    supportCount: integer('support_count').notNull(),
+    refuteCount: integer('refute_count').notNull(),
+    inconclusiveCount: integer('inconclusive_count').notNull(),
+    calculationHash: text('calculation_hash').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('idx_consensus_calculation').on(table.claimId, table.calculationHash),
+    index('idx_consensus_claim_created').on(table.claimId, table.createdAt),
+  ],
+);
+
+export const challenges = sqliteTable(
+  'challenges',
+  {
+    id: text('id').primaryKey(),
+    claimId: text('claim_id').notNull().references(() => claims.id),
+    challengerWallet: text('challenger_wallet').notNull().references(() => agents.wallet),
+    reason: text('reason').notNull(),
+    evidenceUrl: text('evidence_url').notNull(),
+    challengeHash: text('challenge_hash').notNull(),
+    epochId: integer('epoch_id').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('idx_challenge_claim_wallet').on(table.claimId, table.challengerWallet),
+    index('idx_challenge_epoch').on(table.epochId),
+  ],
+);
+
+export const validatorAttestations = sqliteTable(
+  'validator_attestations',
+  {
+    id: text('id').primaryKey(),
+    claimId: text('claim_id').notNull().references(() => claims.id),
+    consensusHash: text('consensus_hash').notNull(),
+    validatorWallet: text('validator_wallet').notNull().references(() => agents.wallet),
+    verdict: text('verdict').notNull(),
+    signature: text('signature').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('idx_attestation_claim_wallet_hash').on(table.claimId, table.validatorWallet, table.consensusHash),
+    index('idx_attestation_consensus').on(table.consensusHash),
+  ],
+);
+
+export const rewardEvents = sqliteTable(
+  'reward_events',
+  {
+    id: text('id').primaryKey(),
+    wallet: text('wallet').notNull().references(() => agents.wallet),
+    epochId: integer('epoch_id').notNull(),
+    eventType: text('event_type').notNull(),
+    objectId: text('object_id').notNull(),
+    points: integer('points').notNull(),
+    ruleVersion: text('rule_version').notNull(),
+    calculationHash: text('calculation_hash').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('idx_reward_event_unique').on(table.wallet, table.eventType, table.objectId, table.ruleVersion),
+    index('idx_reward_events_epoch').on(table.epochId),
+    index('idx_reward_events_wallet').on(table.wallet),
+  ],
+);

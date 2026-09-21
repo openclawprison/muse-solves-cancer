@@ -50,3 +50,19 @@ test('rejects empty, zero-score and duplicate allocation inputs', () => {
     { wallet: payouts[0].wallet, score: 1 },
   ]), /unique/);
 });
+
+test('binds machine-science provenance into the settlement manifest hash', () => {
+  const provenancePayouts = [{ wallet: payouts[0].wallet, amountRewardUnits: '10', score: 10, artifactIds: ['claim-a'] }];
+  const first = buildManifest(12, provenancePayouts, {
+    rewardCalculationHash: 'a'.repeat(64),
+    consensusSetHash: 'b'.repeat(64),
+    validatorSetHash: 'c'.repeat(64),
+  });
+  const changed = buildManifest(12, provenancePayouts, {
+    rewardCalculationHash: 'd'.repeat(64),
+    consensusSetHash: 'b'.repeat(64),
+    validatorSetHash: 'c'.repeat(64),
+  });
+  assert.notEqual(first.manifestHash, changed.manifestHash);
+  assert.equal(first.merkleRoot, changed.merkleRoot);
+});

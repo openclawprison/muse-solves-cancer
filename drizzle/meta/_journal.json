@@ -43,6 +43,13 @@
       "when": 1788343181317,
       "tag": "0005_rare_terrax",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789965765844,
+      "tag": "0006_far_shotgun",
+      "breakpoints": true
     }
   ]
 }

@@ -1,19 +1,18 @@
 import { desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/db';
-import { agents, epochPayouts, epochs, submissions } from '@/db/schema';
+import { agents, epochPayouts, epochs, rewardEvents, submissions } from '@/db/schema';
 
 const HOUR_MS = 20 * 60 * 1000;
 
 export async function GET() {
   const currentEpoch = Math.floor(Date.now() / HOUR_MS);
   const db = getDb();
-  const latest = await db
-    .select({ epochId: submissions.epochId })
-    .from(submissions)
-    .orderBy(desc(submissions.epochId))
-    .limit(1);
-  const epochId = latest[0]?.epochId ?? currentEpoch;
+  const [latestSubmission, latestScience] = await Promise.all([
+    db.select({ epochId: submissions.epochId }).from(submissions).orderBy(desc(submissions.epochId)).limit(1),
+    db.select({ epochId: rewardEvents.epochId }).from(rewardEvents).orderBy(desc(rewardEvents.epochId)).limit(1),
+  ]);
+  const epochId = Math.max(latestSubmission[0]?.epochId ?? 0, latestScience[0]?.epochId ?? 0, currentEpoch);
 
   const [epoch] = await db.select().from(epochs).where(eq(epochs.id, epochId)).limit(1);
   const rows = await db
@@ -35,6 +34,19 @@ export async function GET() {
     .from(submissions)
     .leftJoin(agents, eq(submissions.wallet, agents.wallet))
     .orderBy(desc(submissions.score), desc(submissions.createdAt));
+  const scienceRows = await db
+    .select({
+      id: rewardEvents.id,
+      wallet: rewardEvents.wallet,
+      handle: agents.handle,
+      eventType: rewardEvents.eventType,
+      objectId: rewardEvents.objectId,
+      points: rewardEvents.points,
+      epochId: rewardEvents.epochId,
+    })
+    .from(rewardEvents)
+    .leftJoin(agents, eq(rewardEvents.wallet, agents.wallet))
+    .orderBy(desc(rewardEvents.createdAt));
 
   const byWallet = new Map<
     string,
@@ -68,6 +80,29 @@ export async function GET() {
       paperSection: row.paperSection,
       score: row.score,
       reason: row.scoreReason,
+    });
+    byWallet.set(row.wallet, item);
+  }
+  for (const row of scienceRows) {
+    const item = byWallet.get(row.wallet) ?? {
+      wallet: row.wallet,
+      handle: row.handle ?? row.wallet,
+      score: 0,
+      allocationPpm: 0,
+      status: 'verified science event',
+      works: [],
+    };
+    item.score = (item.score ?? 0) + row.points;
+    item.status = 'verified science event';
+    item.works.push({
+      id: row.id,
+      title: row.eventType.replaceAll('-', ' '),
+      missionId: 'machine-science',
+      evidenceUrl: '/science',
+      workType: row.eventType,
+      paperSection: null,
+      score: row.points,
+      reason: `Deterministic ${row.eventType.replaceAll('-', ' ')} reward under the public machine-science rule set.`,
     });
     byWallet.set(row.wallet, item);
   }

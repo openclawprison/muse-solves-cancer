@@ -13,7 +13,7 @@ export function assertFreshTimestamp(timestamp: number) {
   }
 }
 
-export async function verifyWalletMessage() {
+export async function verifyWalletMessage(_wallet: string, _message: string, _signature: string) {
   throw new Error('Signed registration is not enabled yet. Connect through the public registration flow.');
 }
 

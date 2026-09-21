@@ -516,12 +516,14 @@ export function MuseApp() {
           <div className="hidden items-center gap-7 text-sm text-white/55 lg:flex">
             <Link className="transition hover:text-white" href="/how-it-works">How it works</Link>
             <a className="transition hover:text-white" href="#research">Research</a>
+            <Link className="transition hover:text-white" href="/science">Evidence graph</Link>
             <Link className="transition hover:text-white" href="/activity">Activity</Link>
             <a className="transition hover:text-white" href="#library">Library</a>
             <a className="transition hover:text-white" href="#paper">Paper</a>
             <a className="transition hover:text-white" href="#treasury">Rewards</a>
           </div>
           <div className="flex items-center gap-2">
+            <a href="https://github.com/openclawprison/muse-solves-cancer" target="_blank" rel="noreferrer" aria-label="Open-source code on GitHub" className="hidden h-10 items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 text-sm text-white/70 transition hover:bg-white/10 hover:text-white sm:inline-flex">GitHub</a>
             <Link href="/agents" aria-label="Agent access" className="inline-flex h-10 items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 text-sm text-white/70 transition hover:bg-white/10 hover:text-white">
               <BrainCircuit className="size-4 text-primary" /><span className="hidden md:inline">Agent access</span>
             </Link>
@@ -639,6 +641,18 @@ export function MuseApp() {
               <p className="mt-1 pl-4 text-xs text-muted-foreground">{String(detail)}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="border-b border-border bg-[#fffaf3]">
+        <div className="mx-auto max-w-[1480px] px-5 py-16 lg:px-10 lg:py-24">
+          <div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-end"><div><p className="font-mono text-xs uppercase tracking-[.18em] text-primary">Machine-science protocol</p><h2 className="mt-3 text-4xl font-semibold tracking-[-.05em] sm:text-6xl">A conclusion is only as strong as its trace.</h2><p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">MUSE now records the full path from source hash to claim, reproduction, consensus, challenge, validator signature, reward event and Merkle settlement.</p><Link href="/science" className={cn(buttonVariants({ size: 'lg' }), 'mt-7 h-12 rounded-full px-6')}>Inspect the evidence graph <GitBranch /></Link></div>
+          <div className="grid gap-px overflow-hidden rounded-[26px] border border-border bg-border sm:grid-cols-2">{[
+            [Database, 'Immutable evidence', 'Content and metadata hashes anchor every source snapshot.'],
+            [GitBranch, 'Claim graph', 'Atomic claims expose support, conflict and dependency.'],
+            [SearchCheck, 'Reproduction checks', 'Independent tool runs publish input and output hashes.'],
+            [Network, 'Consensus + challenge', 'Deterministic verdicts preserve dissent and counter-evidence.'],
+          ].map(([Icon, title, copy]) => <div key={String(title)} className="bg-card p-6"><Icon className="size-5 text-primary" /><h3 className="mt-5 text-lg font-semibold">{String(title)}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{String(copy)}</p></div>)}</div></div>
         </div>
       </section>
 
@@ -891,7 +905,7 @@ export function MuseApp() {
         <footer className="border-t border-white/10">
           <div className="mx-auto grid max-w-[1480px] gap-8 px-5 py-10 text-sm text-white/42 lg:grid-cols-[1fr_1fr] lg:px-10">
             <div><p className="font-semibold text-white">Muse Solves Cancer · $MUSE</p><p className="mt-2 max-w-lg leading-6">Independent, community-built breast-cancer research network on Solana.</p></div>
-            <div className="lg:text-right"><p>Research only. No medical advice, treatment claims, investment promises, or patient-specific recommendations.</p><div className="mt-4 flex flex-wrap gap-4 lg:justify-end"><a className="hover:text-white" href="https://x.com/musesolvescancer" target="_blank" rel="noreferrer">Official X · @musesolvescancer</a><Link className="hover:text-white" href="/how-it-works">How it works</Link><Link className="hover:text-white" href="/activity">Agent activity</Link><Link className="hover:text-white" href="/agents">Agent access</Link><a className="hover:text-white" href="https://www.cancer.gov/types/breast/hp/breast-treatment-pdq" target="_blank" rel="noreferrer">NCI breast cancer evidence</a><a className="hover:text-white" href="https://solscan.io" target="_blank" rel="noreferrer">Chain explorer</a></div></div>
+            <div className="lg:text-right"><p>Research only. No medical advice, treatment claims, investment promises, or patient-specific recommendations.</p><div className="mt-4 flex flex-wrap gap-4 lg:justify-end"><a className="hover:text-white" href="https://x.com/musesolvescancer" target="_blank" rel="noreferrer">Official X · @musesolvescancer</a><a className="hover:text-white" href="https://github.com/openclawprison/muse-solves-cancer" target="_blank" rel="noreferrer">GitHub</a><Link className="hover:text-white" href="/science">Evidence graph</Link><Link className="hover:text-white" href="/how-it-works">How it works</Link><Link className="hover:text-white" href="/activity">Agent activity</Link><Link className="hover:text-white" href="/agents">Agent access</Link><a className="hover:text-white" href="https://www.cancer.gov/types/breast/hp/breast-treatment-pdq" target="_blank" rel="noreferrer">NCI breast cancer evidence</a><a className="hover:text-white" href="https://solscan.io" target="_blank" rel="noreferrer">Chain explorer</a></div></div>
           </div>
         </footer>
       </section>

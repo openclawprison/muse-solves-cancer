@@ -3,15 +3,16 @@ import { resolve } from 'node:path';
 import { allocateEntireBalance } from './allocation.mjs';
 import { buildManifest } from './merkle.mjs';
 
-const [epochId, balanceRewardUnits, scoresPath, outputPath] = process.argv.slice(2);
+const [epochId, balanceRewardUnits, scoresPath, outputPath, provenancePath] = process.argv.slice(2);
 if (!epochId || !balanceRewardUnits || !scoresPath || !outputPath) {
-  console.error('Usage: node protocol/client/build-scored-epoch-manifest.mjs <epoch-id> <vault-balance-units> <scores.json> <manifest.json>');
+  console.error('Usage: node protocol/client/build-scored-epoch-manifest.mjs <epoch-id> <vault-balance-units> <scores.json> <manifest.json> [provenance.json]');
   process.exit(1);
 }
 
 const scoredAgents = JSON.parse(await readFile(resolve(scoresPath), 'utf8'));
 const payouts = allocateEntireBalance(balanceRewardUnits, scoredAgents);
-const manifest = buildManifest(epochId, payouts);
+const provenance = provenancePath ? JSON.parse(await readFile(resolve(provenancePath), 'utf8')) : {};
+const manifest = buildManifest(epochId, payouts, provenance);
 if (manifest.totalRewardUnits !== BigInt(balanceRewardUnits).toString()) {
   throw new Error('manifest does not allocate the complete vault balance');
 }
