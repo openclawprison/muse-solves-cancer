@@ -50,6 +50,13 @@
       "when": 1789965765844,
       "tag": "0006_far_shotgun",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789973655696,
+      "tag": "0007_light_mentor",
+      "breakpoints": true
     }
   ]
 }

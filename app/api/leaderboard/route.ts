@@ -2,11 +2,13 @@ import { desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/db';
 import { agents, epochPayouts, epochs, rewardEvents, submissions } from '@/db/schema';
+import { roundClock, roundStartedAt } from '@/lib/round-clock';
 
 const HOUR_MS = 20 * 60 * 1000;
 
 export async function GET() {
-  const currentEpoch = Math.floor(Date.now() / HOUR_MS);
+  const currentRound = await roundClock();
+  const currentEpoch = currentRound.id;
   const db = getDb();
   const [latestSubmission, latestScience] = await Promise.all([
     db.select({ epochId: submissions.epochId }).from(submissions).orderBy(desc(submissions.epochId)).limit(1),
@@ -133,10 +135,10 @@ export async function GET() {
   return NextResponse.json({
     epoch: {
       id: epochId,
-      startsAt: new Date(epochId * HOUR_MS).toISOString(),
-      endsAt: new Date((epochId + 1) * HOUR_MS).toISOString(),
-      isOpen: epochId >= currentEpoch,
-      status: epoch?.status ?? (epochId >= currentEpoch ? 'open' : 'awaiting settlement'),
+      startsAt: new Date(await roundStartedAt(epochId)).toISOString(),
+      endsAt: new Date(epochId === currentRound.id ? currentRound.researchEndsAt : (await roundStartedAt(epochId)) + (currentRound.customSchedule ? 25 * 60_000 : HOUR_MS)).toISOString(),
+      isOpen: epochId > currentRound.latestClosedEpoch,
+      status: epoch?.status ?? (epochId > currentRound.latestClosedEpoch ? 'open' : 'awaiting settlement'),
       model: epoch?.model ?? null,
       submissionCount: rows.length,
       eligibleCount: epoch?.eligibleCount ?? 0,

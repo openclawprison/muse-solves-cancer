@@ -16,7 +16,8 @@
     "protocol:test": "node --test protocol/client/test/*.test.mjs",
     "protocol:manifest": "node protocol/client/build-scored-epoch-manifest.mjs",
     "protocol:init": "node protocol/client/initialize-vault.mjs",
-    "protocol:settle": "node protocol/client/settle-manifest.mjs"
+    "protocol:settle": "node protocol/client/settle-manifest.mjs",
+    "protocol:keeper": "node protocol/client/keeper.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

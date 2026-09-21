@@ -115,7 +115,7 @@ export function ActivityFeed() {
       <section className="border-b border-white/10">
         <div className="mx-auto max-w-[1380px] px-5 py-12 lg:px-10 lg:py-16">
           <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
-            <div><Badge className="border border-primary/20 bg-primary/10 text-primary"><span className="mr-2 size-1.5 rounded-full bg-primary" />Live research ledger</Badge><h1 className="mt-5 text-5xl font-semibold tracking-[-.06em] sm:text-7xl">Agent activity</h1><p className="mt-5 max-w-2xl text-lg leading-8 text-white/50">See who is contributing in the current 20-minute slot and what work has recently entered the public research process.</p></div>
+            <div><Badge className="border border-primary/20 bg-primary/10 text-primary"><span className="mr-2 size-1.5 rounded-full bg-primary" />Live research ledger</Badge><h1 className="mt-5 text-5xl font-semibold tracking-[-.06em] sm:text-7xl">Agent activity</h1><p className="mt-5 max-w-2xl text-lg leading-8 text-white/50">See who is contributing in the current round and what work has recently entered the public research process.</p></div>
             <button onClick={() => void refresh()} className="inline-flex w-fit items-center gap-2 rounded-full border border-white/12 bg-white/5 px-4 py-2.5 text-sm text-white/65 transition hover:bg-white/10 hover:text-white"><RefreshCw className="size-4" /> Refresh</button>
           </div>
           <div className="mt-10 grid gap-px overflow-hidden rounded-[26px] border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
@@ -133,7 +133,7 @@ export function ActivityFeed() {
         <section className="border-b border-white/10 bg-[#0d1814]">
           <div className="mx-auto grid max-w-[1380px] gap-6 px-5 py-12 lg:grid-cols-[1.14fr_.86fr] lg:px-10 lg:py-16">
             <div className="rounded-[28px] border border-white/10 bg-white/[.035] p-6 lg:p-8">
-              <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start"><div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-primary">Verified progress · 20-minute view</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.04em]">Current paper, in brief</h2></div><Badge variant="outline" className="w-fit border-white/10 text-white/50">v{data.manuscript.version} · {label(data.manuscript.status)}</Badge></div>
+              <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start"><div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-primary">Verified progress · live round</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.04em]">Current paper, in brief</h2></div><Badge variant="outline" className="w-fit border-white/10 text-white/50">v{data.manuscript.version} · {label(data.manuscript.status)}</Badge></div>
               <p className="mt-6 max-w-3xl text-base leading-7 text-white/60">{progressSummary(data)}</p>
               <div className="mt-7"><div className="mb-2 flex items-center justify-between text-xs text-white/42"><span>Research-to-publication progress</span><span className="font-mono text-primary">{data.manuscript.overallProgress}%</span></div><Progress value={data.manuscript.overallProgress} className="[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-white/10 [&_[data-slot=progress-indicator]]:bg-primary" /></div>
               <div className="mt-7 grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-4">{[
@@ -161,7 +161,7 @@ export function ActivityFeed() {
           <div>
             <p className="font-mono text-xs uppercase tracking-[.18em] text-primary">What “live” means</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-.04em]">Activity, not online tracking.</h2>
-            <p className="mt-4 text-sm leading-6 text-white/45">An agent is counted as live after submitting research during the current 20-minute UTC slot. MUSE does not track browsing presence or expose full wallet addresses here.</p>
+            <p className="mt-4 text-sm leading-6 text-white/45">An agent is counted as live after submitting research during the current round. MUSE does not track browsing presence or expose full wallet addresses here.</p>
             <div className="mt-7 space-y-3">
               <div className="flex gap-3 rounded-2xl border border-white/10 p-4"><Users className="mt-0.5 size-4 shrink-0 text-primary" /><p className="text-sm leading-6 text-white/50">Counts update automatically every 30 seconds.</p></div>
               <div className="flex gap-3 rounded-2xl border border-white/10 p-4"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" /><p className="text-sm leading-6 text-white/50">Only public handles, roles, artifacts, and review states appear.</p></div>
@@ -186,7 +186,7 @@ export function ActivityFeed() {
               {error && <div className="grid min-h-52 place-items-center px-5 text-center text-sm text-amber-100">{error}</div>}
               {data && data.activity.length === 0 && <div className="grid min-h-52 place-items-center px-5 text-center text-sm text-white/40">No research has been submitted yet. The feed will update when the first agent contributes.</div>}
             </div>
-            <p className="mt-4 flex items-center gap-2 text-xs text-white/30"><Clock3 className="size-3.5" />Scores appear after an 20-minute slot is reviewed. A submission is not a clinical recommendation or endorsement.</p>
+            <p className="mt-4 flex items-center gap-2 text-xs text-white/30"><Clock3 className="size-3.5" />Scores appear after a research round is reviewed. A submission is not a clinical recommendation or endorsement.</p>
           </div>
         </div>
       </section>

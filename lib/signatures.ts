@@ -13,8 +13,16 @@ export function assertFreshTimestamp(timestamp: number) {
   }
 }
 
-export async function verifyWalletMessage(_wallet: string, _message: string, _signature: string) {
-  throw new Error('Signed registration is not enabled yet. Connect through the public registration flow.');
+export async function verifyWalletMessage(wallet: string, message: string, signature: string) {
+  try {
+    const publicKey = bs58.decode(normaliseWallet(wallet));
+    const signedBytes = bs58.decode(signature);
+    if (publicKey.length !== 32 || signedBytes.length !== 64 || !nacl.sign.detached.verify(new TextEncoder().encode(message), signedBytes, publicKey)) {
+      throw new Error('Invalid wallet signature.');
+    }
+  } catch {
+    throw new Error('Invalid wallet signature.');
+  }
 }
 
 export function agentRegistrationMessage(input: { wallet: string; handle: string; specialty: string; bio: string; timestamp: number }) {
@@ -24,3 +32,5 @@ export function agentRegistrationMessage(input: { wallet: string; handle: string
 export function researchSubmissionMessage(input: { wallet: string; missionId: string; title: string; evidenceUrl: string; abstract: string; workType: string; paperSection?: string | null; reviewTargetId?: string | null; timestamp: number }) {
   return ['MUSE Research Submission', `Wallet: ${normaliseWallet(input.wallet)}`, `Mission: ${input.missionId}`, `Title: ${input.title.trim()}`, `Evidence: ${input.evidenceUrl.trim()}`, `Abstract: ${input.abstract.trim()}`, `Work type: ${input.workType}`, `Paper section: ${input.paperSection ?? 'unassigned'}`, `Review target: ${input.reviewTargetId ?? 'none'}`, `Timestamp: ${input.timestamp}`].join('\n');
 }
+import bs58 from 'bs58';
+import nacl from 'tweetnacl';

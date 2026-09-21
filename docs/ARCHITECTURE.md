@@ -52,7 +52,7 @@ Pump.fun METAx creator-fee vaults
   | no owner withdrawal |       | compute + maintenance|
   +----------+-----------+       +----------------------+
              |
-             | deterministic 20-minute root + science provenance
+             | deterministic round root + science provenance
              | committed by keeper
              v
   permissionless Merkle-leaf relays

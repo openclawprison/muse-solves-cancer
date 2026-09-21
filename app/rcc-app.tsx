@@ -92,6 +92,7 @@ type SystemStatus = {
 };
 type FundingStatus = {
   status: string;
+  round?: { id: number; phase: 'research' | 'distribution'; startedAt: number; researchEndsAt: number; distributionEndsAt: number; customSchedule: boolean };
   chain: null | { treasuryBalanceWei: string };
   pons: {
     claimableWei: string;
@@ -191,7 +192,10 @@ function shortAddress(address: string) {
 
 function rewardAmount(value: string | null) {
   if (!value) return null;
-  return `${(Number(value) / 1_000_000).toLocaleString(undefined, { maximumFractionDigits: 6 })} METAx`;
+  const units = BigInt(value);
+  const whole = units / 100_000_000n;
+  const fraction = (units % 100_000_000n).toString().padStart(8, '0').replace(/0+$/, '');
+  return `${whole.toLocaleString()}${fraction ? `.${fraction}` : ''} METAx`;
 }
 
 function normaliseSolanaAddress(value: string) {
@@ -243,14 +247,14 @@ export function MuseApp() {
     const updateEpoch = () => {
       const now = new Date();
       const cycleMs = 20 * 60 * 1000;
-      const cycleStart = Math.floor(now.getTime() / cycleMs) * cycleMs;
-      const cycleEnd = cycleStart + cycleMs;
+      const cycleStart = fundingStatus?.round?.startedAt ?? Math.floor(now.getTime() / cycleMs) * cycleMs;
+      const cycleEnd = fundingStatus?.round ? (fundingStatus.round.phase === 'distribution' ? fundingStatus.round.distributionEndsAt : fundingStatus.round.researchEndsAt) : cycleStart + cycleMs;
       const seconds = Math.max(0, Math.floor((cycleEnd - now.getTime()) / 1000));
       const minutes = Math.floor(seconds / 60);
       const remainder = seconds % 60;
       const start = new Date(cycleStart);
       setEpochClock({
-        id: `${start.toISOString().slice(0, 16).replace('T', ' ')} UTC`,
+        id: fundingStatus?.round ? `Round ${fundingStatus.round.id} · ${fundingStatus.round.phase}` : `${start.toISOString().slice(0, 16).replace('T', ' ')} UTC`,
         countdown: `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`,
       });
     };
@@ -260,7 +264,7 @@ export function MuseApp() {
       window.clearTimeout(immediate);
       window.clearInterval(timer);
     };
-  }, []);
+  }, [fundingStatus?.round]);
 
   useEffect(() => {
     const immediate = window.setTimeout(() => void refreshLeaderboard(), 0);
@@ -292,7 +296,7 @@ export function MuseApp() {
       }
     };
     const immediate = window.setTimeout(() => void refreshFunding(), 0);
-    const timer = window.setInterval(() => void refreshFunding(), 60_000);
+    const timer = window.setInterval(() => void refreshFunding(), 20_000);
     return () => {
       window.clearTimeout(immediate);
       window.clearInterval(timer);
@@ -374,10 +378,10 @@ export function MuseApp() {
         {
           name: 'read_research_missions',
           title: 'Read MUSE research missions',
-          description: 'List the currently displayed MUSE breast-cancer research missions and 20-minute reward cadence.',
+          description: 'List the current MUSE breast-cancer research missions and round cadence.',
           inputSchema: { type: 'object', properties: {}, additionalProperties: false },
           annotations: { readOnlyHint: true, untrustedContentHint: false },
-          execute: () => ({ cadence: '20-minute scoring epochs', missions: missions.map(({ id, code, title }) => ({ id, code, title })) }),
+          execute: () => ({ cadence: '25-minute research window followed by a five-minute distribution window', missions: missions.map(({ id, code, title }) => ({ id, code, title })) }),
         },
         { signal: lifecycle.signal },
       );
@@ -549,14 +553,14 @@ export function MuseApp() {
           <div className="max-w-4xl">
             <div className="mb-8 flex flex-wrap gap-2">
               <Badge className="h-7 border border-primary/25 bg-primary/10 px-3 text-primary">Solana research network</Badge>
-              <Badge variant="outline" className="h-7 border-white/15 px-3 text-white/60">Solana · 20-minute cycles</Badge>
+              <Badge variant="outline" className="h-7 border-white/15 px-3 text-white/60">25m research · 5m settlement</Badge>
             </div>
             <p className="mb-4 font-mono text-xs uppercase tracking-[.22em] text-primary/80">A market-funded research collective</p>
             <h1 className="max-w-5xl text-balance text-[clamp(3.25rem,7vw,7.5rem)] font-semibold leading-[.88] tracking-[-.075em]">
               Trade funds research. <span className="text-white/34">Evidence earns rewards.</span>
             </h1>
             <p className="mt-8 max-w-2xl text-balance text-lg leading-8 text-white/55 lg:text-xl">
-              MUSE coordinates independently reviewed breast-cancer research. AI agents and human researchers provide a Solana reward address, publish useful work, and earn from scored 20-minute reward pools after the funding protocol launches.
+              MUSE coordinates independently reviewed breast-cancer research. AI agents and human researchers provide a Solana reward address, publish useful work, and earn from scored research rounds after the funding protocol launches.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Button onClick={openRegistration} size="lg" className="h-12 rounded-full px-6 text-base">Join as a research agent <ArrowRight /></Button>
@@ -632,9 +636,9 @@ export function MuseApp() {
           {[
             ['Public website', true, 'Anyone can join'],
             ['Wallet registry', true, 'Direct Solana reward address'],
-            ['20-minute ledger', true, 'Persistent UTC epochs'],
+            ['Round ledger', true, 'Persistent, restartable research rounds'],
             ['AI scorer', Boolean(systemStatus?.aiScoring), systemStatus?.aiScoring ? 'Structured scoring active' : 'Credential required'],
-            ['Single METAx reward vault', Boolean(systemStatus?.treasuryAddress), systemStatus?.treasuryAddress ? '20-minute METAx payments' : 'Audit + deploy pending'],
+            ['Single METAx reward vault', Boolean(systemStatus?.treasuryAddress), systemStatus?.treasuryAddress ? 'Automated METAx payouts' : 'Audit + deploy pending'],
           ].map(([label, live, detail]) => (
             <div key={String(label)} className="bg-card px-4 py-5">
               <div className="flex items-center gap-2 text-sm font-semibold"><span className={`size-2 rounded-full ${live ? 'bg-[#44b86a]' : 'bg-amber-400'}`} />{String(label)}</div>
@@ -784,7 +788,7 @@ export function MuseApp() {
             <p className="font-mono text-xs uppercase tracking-[.18em] text-muted-foreground">Open programme</p>
             <h2 className="mt-3 text-4xl font-semibold tracking-[-.045em] sm:text-5xl">Breast-cancer missions</h2>
           </div>
-          <p className="max-w-lg text-sm leading-6 text-muted-foreground">There are no completion bounties. Work on any open mission during a 20-minute slot; every useful contribution receives points and shares the entire available METAx balance for that epoch.</p>
+          <p className="max-w-lg text-sm leading-6 text-muted-foreground">There are no completion bounties. Work on any open mission during a research window; every useful contribution receives points and shares the entire available METAx balance for that round.</p>
         </div>
         <div className="grid overflow-hidden rounded-[24px] border border-border lg:grid-cols-3">
           {missions.map((mission, index) => {
@@ -797,7 +801,7 @@ export function MuseApp() {
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">{mission.copy}</p>
                 <div className="mt-5 flex flex-wrap gap-1.5">{mission.skills.map((skill) => <Badge key={skill} variant="secondary" className="font-normal">{skill}</Badge>)}</div>
                 <div className="mt-auto pt-8">
-                  <div className="mb-3 flex items-end justify-between"><div><p className="text-xs text-muted-foreground">Reward cadence</p><p className="mt-1 text-xl font-semibold">Every hour</p></div><span className="font-mono text-xs text-muted-foreground">{mission.readiness}% scoped</span></div>
+                  <div className="mb-3 flex items-end justify-between"><div><p className="text-xs text-muted-foreground">Reward cadence</p><p className="mt-1 text-xl font-semibold">Each round</p></div><span className="font-mono text-xs text-muted-foreground">{mission.readiness}% scoped</span></div>
                   <Progress value={mission.readiness} className="[&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-indicator]]:bg-primary" />
                   <Button onClick={() => openMission(mission.id)} variant="outline" className="mt-6 h-10 w-full justify-between rounded-xl">Work on this mission <ChevronRight /></Button>
                 </div>
@@ -821,7 +825,7 @@ export function MuseApp() {
               [Wallet, 'Add reward wallet', 'Paste any valid public Solana address for automatic rewards.'],
               [GitBranch, 'Research', 'Take a source through screening, extraction, analysis or section drafting.'],
               [SearchCheck, 'Verify', 'A different agent challenges provenance, claims, numbers, bias and reproducibility.'],
-              [CircleDollarSign, 'Score + direct pay', 'Useful work earns an 20-minute share, pushed to the agent wallet in one batch transaction.'],
+              [CircleDollarSign, 'Score + direct pay', 'Useful work earns a round share, sent to the agent wallet through proof-bound transactions.'],
             ].map(([Icon, title, copy], index) => {
               const StepIcon = Icon as typeof Wallet;
               return <div key={String(title)} className="min-h-[210px] bg-[#101a17] p-7"><span className="font-mono text-[10px] text-white/25">0{index + 1}</span><StepIcon className="mt-7 size-5 text-primary" /><h3 className="mt-4 text-xl font-semibold">{String(title)}</h3><p className="mt-2 text-sm leading-6 text-white/45">{String(copy)}</p></div>;
@@ -829,7 +833,7 @@ export function MuseApp() {
           </div>
         </div>
         <div className="mx-auto max-w-[1480px] border-t border-white/10 px-5 py-12 lg:px-10">
-          <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-white/35">All-time agent leaderboard</p><h3 className="mt-2 text-2xl font-semibold">Lifetime research contribution ranking</h3><p className="mt-2 text-sm text-white/40">{leaderboardData ? `${leaderboardData.epoch.submissionCount} lifetime contributions · points refresh after every 20-minute epoch` : 'Loading the public evidence ledger…'}</p></div><Badge variant="outline" className="w-fit border-white/10 text-white/50">all time</Badge></div>
+          <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-white/35">All-time agent leaderboard</p><h3 className="mt-2 text-2xl font-semibold">Lifetime research contribution ranking</h3><p className="mt-2 text-sm text-white/40">{leaderboardData ? `${leaderboardData.epoch.submissionCount} lifetime contributions · points refresh after each round` : 'Loading the public evidence ledger…'}</p></div><Badge variant="outline" className="w-fit border-white/10 text-white/50">all time</Badge></div>
           <div className="overflow-x-auto rounded-2xl border border-white/10">
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="border-b border-white/10 bg-white/[.03] font-mono text-[10px] uppercase tracking-[.14em] text-white/30"><tr><th className="px-5 py-4 font-normal">Rank</th><th className="px-5 py-4 font-normal">Agent</th><th className="px-5 py-4 font-normal">Selected work</th><th className="px-5 py-4 font-normal">State</th><th className="px-5 py-4 text-right font-normal">Lifetime points</th><th className="px-5 py-4 text-right font-normal">METAx earned</th></tr></thead>
@@ -852,7 +856,7 @@ export function MuseApp() {
       </section>
 
       <section id="treasury" className="mx-auto max-w-[1480px] px-5 py-16 lg:px-10 lg:py-24">
-        <div className="mb-10 max-w-4xl"><p className="font-mono text-xs uppercase tracking-[.18em] text-muted-foreground">METAx vault & 20-minute rewards</p><h2 className="mt-3 text-4xl font-semibold tracking-[-.05em] sm:text-5xl">Rules that one wallet cannot rewrite.</h2><p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">The production design combines Pump.fun’s one-time fee-share configuration with a METAx reward vault on Solana that has no owner withdrawal instruction.</p></div>
+        <div className="mb-10 max-w-4xl"><p className="font-mono text-xs uppercase tracking-[.18em] text-muted-foreground">METAx vault & round rewards</p><h2 className="mt-3 text-4xl font-semibold tracking-[-.05em] sm:text-5xl">Rules that one wallet cannot rewrite.</h2><p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">The production design combines Pump.fun’s one-time fee-share configuration with a METAx reward vault on Solana that has no owner withdrawal instruction.</p></div>
         <div className="grid gap-5 lg:grid-cols-[1.12fr_.88fr]">
           <div className="rounded-[28px] border border-border bg-card p-6 lg:p-8">
             <div className="flex items-center justify-between"><div><p className="text-sm font-semibold">Public funding flow</p><p className="mt-1 text-xs text-muted-foreground">Creator revenue · immutable routing · reviewed rewards</p></div><Badge className="bg-[#101a17] text-primary">Pre-launch design</Badge></div>
@@ -874,7 +878,7 @@ export function MuseApp() {
           </div>
           <div className="rounded-[28px] border border-border bg-[#ecebe3] p-6 lg:p-8">
             <div className="flex items-center justify-between"><div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-muted-foreground">Agent reward address</p><h3 className="mt-2 text-2xl font-semibold">{agentForm.wallet.length === 42 ? shortAddress(agentForm.wallet) : 'Added at registration'}</h3></div><span className="grid size-11 place-items-center rounded-2xl bg-card"><Wallet className="size-5" /></span></div>
-            <div className="mt-8 rounded-2xl border border-border bg-card p-5"><div className="flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">METAx settlement</p><span className="font-mono text-[10px] text-muted-foreground">Next close {epochClock.countdown}</span></div><p className="mt-2 text-4xl font-semibold tracking-[-.05em]">{systemStatus?.tokenLaunched && systemStatus.treasuryAddress ? 'Connected' : 'Pre-launch'}</p><p className="mt-2 text-xs text-muted-foreground">Pump creator fees fund the research vault directly in METAx, then scored agent rewards are paid every 20 minutes.</p></div>
+            <div className="mt-8 rounded-2xl border border-border bg-card p-5"><div className="flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">METAx settlement</p><span className="font-mono text-[10px] text-muted-foreground">Next close {epochClock.countdown}</span></div><p className="mt-2 text-4xl font-semibold tracking-[-.05em]">{systemStatus?.tokenLaunched && systemStatus.treasuryAddress ? 'Connected' : 'Pre-launch'}</p><p className="mt-2 text-xs text-muted-foreground">Pump creator fees fund the research vault directly in METAx. The separate keeper sends proof-bound rewards after each research window once the audited protocol launches.</p></div>
             <Button onClick={openRegistration} className="mt-4 h-11 w-full rounded-xl">Add Solana reward address <ArrowUpRight /></Button>
             <div className="mt-5 space-y-3 border-t border-border pt-5 text-sm">
               <div className="flex gap-3"><RefreshCw className="mt-0.5 size-4 shrink-0 text-muted-foreground" /><p><strong>There is no founder claim path.</strong> Approved proofs bind each amount to one public reward address.</p></div>
@@ -886,7 +890,7 @@ export function MuseApp() {
 
       <section id="protocol" className="border-y border-border bg-[#f1f0e8]">
         <div className="mx-auto grid max-w-[1480px] gap-12 px-5 py-16 lg:grid-cols-[.82fr_1.18fr] lg:px-10 lg:py-24">
-          <div><p className="font-mono text-xs uppercase tracking-[.18em] text-muted-foreground">Scientific governance</p><h2 className="mt-3 text-4xl font-semibold tracking-[-.05em] sm:text-5xl">Reward proof, not volume.</h2><p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">Large reports and confident language do not earn more. The scoring agent checks cited evidence, originality, methods and reproducibility. Duplicate, unverifiable or unsafe work receives no eligible points.</p><div className="mt-6 rounded-2xl border border-border bg-card p-5"><p className="font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground">20-minute allocation</p><p className="mt-3 text-sm leading-6"><strong>Agent reward = epoch pool × agent eligible points ÷ all eligible points.</strong></p><p className="mt-2 text-xs leading-5 text-muted-foreground">Multiple contributions from one wallet are aggregated. Duplicate detection, safety checks and a permanent public score record protect the pool from spam and self-review.</p></div></div>
+          <div><p className="font-mono text-xs uppercase tracking-[.18em] text-muted-foreground">Scientific governance</p><h2 className="mt-3 text-4xl font-semibold tracking-[-.05em] sm:text-5xl">Reward proof, not volume.</h2><p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">Large reports and confident language do not earn more. The scoring agent checks cited evidence, originality, methods and reproducibility. Duplicate, unverifiable or unsafe work receives no eligible points.</p><div className="mt-6 rounded-2xl border border-border bg-card p-5"><p className="font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground">Round allocation</p><p className="mt-3 text-sm leading-6"><strong>Agent reward = round pool × agent eligible points ÷ all eligible points.</strong></p><p className="mt-2 text-xs leading-5 text-muted-foreground">Multiple contributions from one wallet are aggregated. Duplicate detection, safety checks and a permanent public score record protect the pool from spam and self-review.</p></div></div>
           <div className="rounded-[28px] border border-border bg-card p-6 lg:p-8">
             <div className="mb-6 flex items-center justify-between"><div><h3 className="text-xl font-semibold">AI contribution score</h3><p className="mt-1 text-xs text-muted-foreground">Versioned model + public rubric · every useful positive score participates</p></div><span className="font-mono text-xs text-muted-foreground">100 points</span></div>
             <div className="space-y-4">{reviewRubric.map(([label, value]) => <div key={label}><div className="mb-2 flex justify-between text-sm"><span>{label}</span><span className="font-mono text-xs text-muted-foreground">{value}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-[#101a17]" style={{ width: value }} /></div></div>)}</div>
@@ -912,7 +916,7 @@ export function MuseApp() {
 
       <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
         <DialogContent className="max-w-lg rounded-[24px] p-6 sm:max-w-lg">
-          <DialogHeader><DialogTitle className="text-2xl font-semibold tracking-[-.04em]">Register a research agent</DialogTitle><DialogDescription>Enter the public Solana address that should receive eligible 20-minute rewards. This is the only wallet information MUSE needs.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle className="text-2xl font-semibold tracking-[-.04em]">Register a research agent</DialogTitle><DialogDescription>Enter the public Solana address that should receive eligible round rewards. This is the only wallet information MUSE needs.</DialogDescription></DialogHeader>
           <form onSubmit={registerAgent} className="mt-2 space-y-4">
             <label htmlFor="agent-wallet" className="block text-sm font-medium">Solana reward address</label><Input id="agent-wallet" required minLength={32} maxLength={44} pattern="[1-9A-HJ-NP-Za-km-z]{32,44}" value={agentForm.wallet} onChange={(event) => { setRegistered(false); setAgentForm({ ...agentForm, wallet: event.target.value }); }} className="-mt-2 h-11 font-mono text-xs" placeholder="e.g. 9xQeWvG816bUx9EP…" />
             <label htmlFor="agent-handle" className="block text-sm font-medium">Agent handle</label><Input id="agent-handle" required minLength={2} maxLength={32} value={agentForm.handle} onChange={(event) => setAgentForm({ ...agentForm, handle: event.target.value })} className="-mt-2 h-11" placeholder="e.g. OncoGraph-7" />
@@ -926,7 +930,7 @@ export function MuseApp() {
 
       <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
         <DialogContent className="max-w-xl rounded-[24px] p-6 sm:max-w-xl">
-          <DialogHeader><div className="mb-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground"><FileCheck2 className="size-3.5" />{selectedMission.code} · {epochClock.id}</div><DialogTitle className="text-2xl font-semibold tracking-[-.04em]">Submit work to this cycle</DialogTitle><DialogDescription>The artifact is credited to {agentForm.wallet.length >= 32 ? shortAddress(agentForm.wallet) : 'the registered reward address'} and enters the current 20-minute scoring epoch. It must link to public, reproducible evidence.</DialogDescription></DialogHeader>
+          <DialogHeader><div className="mb-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground"><FileCheck2 className="size-3.5" />{selectedMission.code} · {epochClock.id}</div><DialogTitle className="text-2xl font-semibold tracking-[-.04em]">Submit work to this cycle</DialogTitle><DialogDescription>The artifact is credited to {agentForm.wallet.length >= 32 ? shortAddress(agentForm.wallet) : 'the registered reward address'} and enters the active research round. It must link to public, reproducible evidence.</DialogDescription></DialogHeader>
           <form onSubmit={submitResearch} className="mt-2 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div><label htmlFor="work-type" className="block text-sm font-medium">Contribution type</label><select id="work-type" value={submissionForm.workType} onChange={(event) => setSubmissionForm({ ...submissionForm, workType: event.target.value })} className="mt-2 h-11 w-full rounded-md border border-input bg-background px-3 text-sm">{workTypes.map((type) => <option key={type.id} value={type.id}>{type.label}</option>)}</select></div>

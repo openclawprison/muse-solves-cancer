@@ -26,6 +26,8 @@ const [epoch] = PublicKey.findProgramAddressSync([EPOCH_SEED, epochId.toArrayLik
 const existingEpoch = await program.account.epoch.fetchNullable(epoch);
 
 const transactions = [];
+const payoutResults = [];
+let commitTxHash = null;
 if (!existingEpoch) {
   if (!configState.keeper.equals(provider.publicKey)) throw new Error('only the configured keeper can commit a new epoch');
   const vaultBalance = await connection.getTokenAccountBalance(rewardVault, 'confirmed');
@@ -33,7 +35,7 @@ if (!existingEpoch) {
   if (unreservedBalance.toString() !== manifest.totalRewardUnits) {
     throw new Error(`manifest total ${manifest.totalRewardUnits} must equal the complete unreserved vault balance ${unreservedBalance}`);
   }
-  transactions.push(await program.methods
+  commitTxHash = await program.methods
     .createEpoch(
       epochId,
       [...Buffer.from(manifest.merkleRoot, 'hex')],
@@ -42,7 +44,8 @@ if (!existingEpoch) {
       manifest.payouts.length,
     )
     .accounts({ config, rewardMint, rewardVault, epoch, keeper: provider.publicKey, rewardTokenProgram, systemProgram: SystemProgram.programId })
-    .rpc());
+    .rpc();
+  transactions.push(commitTxHash);
 } else {
   const root = Buffer.from(existingEpoch.root).toString('hex');
   const manifestHash = Buffer.from(existingEpoch.manifestHash).toString('hex');
@@ -54,9 +57,12 @@ if (!existingEpoch) {
 for (const payout of manifest.payouts) {
   const recipient = new PublicKey(payout.wallet);
   const [receipt] = PublicKey.findProgramAddressSync([RECEIPT_SEED, epoch.toBuffer(), u32le(payout.index)], program.programId);
-  if (await connection.getAccountInfo(receipt, 'confirmed')) continue;
+  if (await connection.getAccountInfo(receipt, 'confirmed')) {
+    payoutResults.push({ index: payout.index, wallet: payout.wallet, status: 'receipt_exists', txHash: null });
+    continue;
+  }
   const recipientRewardAccount = getAssociatedTokenAddressSync(rewardMint, recipient, true, rewardTokenProgram, ASSOCIATED_TOKEN_PROGRAM_ID);
-  transactions.push(await program.methods
+  const txHash = await program.methods
     .payLeaf(payout.index, new BN(payout.amountRewardUnits), payout.proof.map((node) => [...Buffer.from(node, 'hex')]))
     .accounts({
       config,
@@ -71,7 +77,9 @@ for (const payout of manifest.payouts) {
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     })
-    .rpc());
+    .rpc();
+  transactions.push(txHash);
+  payoutResults.push({ index: payout.index, wallet: payout.wallet, status: 'submitted', txHash });
 }
 
-console.log(JSON.stringify({ epochId: manifest.epochId, epochPda: epoch.toBase58(), transactions }, null, 2));
+console.log(JSON.stringify({ epochId: manifest.epochId, epochPda: epoch.toBase58(), commitTxHash, transactions, payoutResults }, null, 2));

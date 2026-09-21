@@ -1,8 +1,9 @@
 import { env } from 'cloudflare:workers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { contentAddress, epochIdFor, insertRewardEvent, recomputeConsensus, verificationPoints } from '@/lib/evidence-graph';
-import { assertFreshTimestamp, normaliseWallet } from '@/lib/signatures';
+import { canonicalJson, contentAddress, insertRewardEvent, recomputeConsensus, verificationPoints } from '@/lib/evidence-graph';
+import { writableRoundId } from '@/lib/round-clock';
+import { assertFreshTimestamp, normaliseWallet, verifyWalletMessage } from '@/lib/signatures';
 
 const hexHash = z.string().regex(/^[a-f0-9]{64}$/i);
 const inputSchema = z.object({
@@ -18,6 +19,7 @@ const inputSchema = z.object({
   artifactUrl: z.url().max(500),
   metrics: z.record(z.string(), z.unknown()).default({}),
   timestamp: z.number().int(),
+  signature: z.string().trim().min(80).max(120),
 });
 
 export async function POST(request: Request) {
@@ -25,12 +27,16 @@ export async function POST(request: Request) {
     const input = inputSchema.parse(await request.json());
     assertFreshTimestamp(input.timestamp);
     const wallet = normaliseWallet(input.wallet);
+    const { signature, ...signedPayload } = input;
+    await verifyWalletMessage(wallet, `MUSE_VERIFICATION_SUBMISSION_V1\n${canonicalJson(signedPayload)}`, signature);
     const registered = await env.DB.prepare('SELECT 1 FROM agents WHERE wallet = ?').bind(wallet).first();
     if (!registered) throw new Error('Register this wallet before submitting a verification.');
     const claim = await env.DB.prepare('SELECT extractor_wallet FROM claims WHERE id = ?').bind(input.claimId).first<{ extractor_wallet: string }>();
     if (!claim) throw new Error('Claim does not exist.');
     if (claim.extractor_wallet === wallet) throw new Error('Claim extractors cannot verify their own claim.');
-    const record = { ...input, wallet, inputHash: input.inputHash.toLowerCase(), outputHash: input.outputHash.toLowerCase() };
+    const record = { ...signedPayload, wallet, inputHash: input.inputHash.toLowerCase(), outputHash: input.outputHash.toLowerCase() };
+    const receivedAt = Date.now();
+    const epochId = await writableRoundId(receivedAt);
     const id = await contentAddress('MUSE_VERIFICATION_V1', record);
     const inserted = await env.DB.prepare(
       `INSERT INTO verification_runs
@@ -41,11 +47,11 @@ export async function POST(request: Request) {
     ).bind(
       id, input.claimId, wallet, input.specialization, input.method, input.toolName, input.result,
       input.confidenceBps, input.inputHash.toLowerCase(), input.outputHash.toLowerCase(), input.artifactUrl,
-      JSON.stringify(input.metrics), epochIdFor(input.timestamp), input.timestamp,
+      JSON.stringify(input.metrics), epochId, receivedAt,
     ).run();
     if ((inserted.meta.changes ?? 0) === 0) throw new Error('This wallet already verified the claim.');
-    await insertRewardEvent({ wallet, epochId: epochIdFor(input.timestamp), eventType: input.method, objectId: id, points: verificationPoints(input.method), createdAt: input.timestamp });
-    const consensus = await recomputeConsensus(input.claimId, input.timestamp);
+    await insertRewardEvent({ wallet, epochId, eventType: input.method, objectId: id, points: verificationPoints(input.method), createdAt: receivedAt });
+    const consensus = await recomputeConsensus(input.claimId, receivedAt, epochId);
     return NextResponse.json({ ok: true, verificationId: id, points: verificationPoints(input.method), consensus });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Verification failed.';

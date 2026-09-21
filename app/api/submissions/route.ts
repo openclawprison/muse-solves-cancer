@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getDb } from '@/db';
 import { agents, submissions } from '@/db/schema';
 import { isReviewWorkType } from '@/lib/research';
+import { writableRoundId } from '@/lib/round-clock';
 import {
   assertFreshTimestamp,
   normaliseWallet,
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
     }
 
     const id = crypto.randomUUID();
-    const epochId = Math.floor(input.timestamp / 1_200_000);
+    const epochId = await writableRoundId(Date.now());
     await db.insert(submissions).values({
       id,
       wallet,

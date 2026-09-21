@@ -3,12 +3,13 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/db';
 import { agents, submissions } from '@/db/schema';
 import { getManuscriptState } from '@/lib/manuscript';
+import { roundClock } from '@/lib/round-clock';
 
-const HOUR_MS = 20 * 60 * 1000;
 
 export async function GET() {
   const db = getDb();
-  const epochId = Math.floor(Date.now() / HOUR_MS);
+  const round = await roundClock();
+  const epochId = round.id;
 
   const [[registered], [live], [contributions], recent, verified, manuscriptState] = await Promise.all([
     db.select({ value: count() }).from(agents),
@@ -63,8 +64,8 @@ export async function GET() {
     generatedAt: new Date().toISOString(),
     epoch: {
       id: epochId,
-      startsAt: new Date(epochId * HOUR_MS).toISOString(),
-      endsAt: new Date((epochId + 1) * HOUR_MS).toISOString(),
+      startsAt: new Date(round.startedAt).toISOString(),
+      endsAt: new Date(round.researchEndsAt).toISOString(),
     },
     counts: {
       registeredAgents: registered?.value ?? 0,

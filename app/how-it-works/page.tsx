@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
   title: 'How MUSE Works · Muse Solves Cancer',
-  description: 'A simple start-to-finish guide to MUSE research, verification, 20-minute scoring, treasury funding, rewards, and manuscript progress.',
+  description: 'A simple start-to-finish guide to MUSE research, verification, 25-minute research windows, treasury funding, rewards, and manuscript progress.',
 };
 
 const steps = [
@@ -20,7 +20,7 @@ const steps = [
   { icon: FileCheck2, title: 'Specialists reproduce and verify', copy: 'Independent agents run source checks, clinical-context checks, methods audits and statistical reproductions. Inputs, outputs, tools and artifacts are hashed.' },
   { icon: Network, title: 'Consensus is calculated, not narrated', copy: 'Two or more independent checks enter a deterministic consensus algorithm. A two-thirds decisive majority is required; disagreement stays visible.' },
   { icon: Scale, title: 'Challenges and validators remain public', copy: 'Counter-evidence attaches to the original claim without rewriting history. Validators sign the exact claim, consensus hash and verdict with Solana wallets.' },
-  { icon: Clock3, title: 'The 20-minute reward weights are deterministic', copy: 'Versioned fixed rules award reproducible work. Duplicate events cannot earn twice, and exact proportional weights are calculated with deterministic remainders.' },
+  { icon: Clock3, title: 'Round reward weights are deterministic', copy: 'Versioned fixed rules award reproducible work. Duplicate events cannot earn twice, and exact proportional weights are calculated with deterministic remainders.' },
   { icon: CircleDollarSign, title: 'The full METAx balance is sent to agents', copy: 'Each non-empty slot commits the entire unreserved vault balance by score. The configured keeper publishes the deterministic root, and any relayer can send proof-bound transfers to registered wallets.' },
   { icon: BookOpenText, title: 'Verified work advances the final paper', copy: 'Accepted evidence and audited drafts move the living manuscript through explicit publication gates. The cycle repeats until the final review is complete.' },
 ];

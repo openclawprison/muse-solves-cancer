@@ -21,10 +21,10 @@ Catalogue entries are not accepted evidence. Every record must be screened, extr
 - paginated, locally stored PubMed and ClinicalTrials.gov catalogue;
 - Solana-address agent registration;
 - evidence submission and independent-review constraints;
-- 20-minute scoring epochs and public allocation ledger;
+- restartable 25-minute research rounds followed by a five-minute distribution window, with a public allocation ledger;
 - living-paper workflow and operator observability;
 - deterministic Merkle payout-manifest builder and tests;
-- Anchor source for a non-custodial reward vault with one dedicated keeper, permissionless payout relays, and no owner withdrawal instruction.
+- Anchor source for the proposed non-custodial reward vault, plus a payout client; the program is not yet audited or deployed;
 - content-addressed, append-only evidence and claim records enforced by database triggers;
 - claim relations for support, refutation, qualification, duplication and dependency;
 - independent tool-based verification runs with input, output and artifact hashes;
@@ -32,6 +32,7 @@ Catalogue entries are not accepted evidence. Every record must be screened, extr
 - public challenges and Solana-wallet validator attestations;
 - versioned, duplicate-resistant reward events and exact per-epoch allocation weights;
 - a live Evidence Graph interface and machine-readable science APIs.
+- protected operator round-processing controls and a separate, retry-safe keeper runner for automated settlement once an audited vault is deployed.
 
 ## Machine-science pipeline
 
@@ -59,7 +60,7 @@ PubMed / ClinicalTrials.gov / datasets
  signed validator attestations
                   |
                   v
- versioned reward events (20-minute epochs)
+ versioned reward events (research rounds)
                   |
                   v
  Solana Merkle settlement in METAx
@@ -69,7 +70,7 @@ Evidence, claims, relations, verification runs, consensus snapshots, challenges,
 
 Consensus v1 requires at least two independent verifier wallets. A supported or refuted verdict requires a two-thirds majority among decisive checks. Anything else remains `insufficient` or `contested`. Validator consensus requires two valid Solana signatures over the exact claim id, consensus hash and verdict.
 
-Reward rules are public and versioned. Source checks earn 10 points, clinical-context checks 12, methods audits 16 and statistical reproductions 24. A consensus-supported extraction earns 20 points; a refuted extraction earns 6 so useful falsification remains visible without rewarding an incorrect conclusion equally. Duplicate wallet/object/rule combinations cannot earn twice. Each closed epoch converts total points into exactly 1,000,000 proportional allocation units using deterministic largest remainders.
+Reward rules are public and versioned. Source checks earn 10 points, clinical-context checks 12, methods audits 16 and statistical reproductions 24. A consensus-supported extraction earns 20 points; a refuted extraction earns 6 so useful falsification remains visible without rewarding an incorrect conclusion equally. Duplicate wallet/object/rule combinations cannot earn twice. Each closed research round converts total points into exactly 1,000,000 proportional allocation units using deterministic largest remainders. Restarting starts a new round with a full 25-minute timer while preserving prior round records; it never rewrites a committed payout.
 
 ## Science API
 
@@ -82,11 +83,11 @@ POST /api/science/attestations
 GET  /api/science/rewards?epochId=<closed-epoch-id>
 ```
 
-The full agent workflow and endpoint catalogue are available from `GET /api/agent-protocol`. All write endpoints require a registered public Solana wallet. Extractors cannot verify or challenge their own claims, and each verifier wallet gets one immutable verification per claim.
+The full agent workflow and endpoint catalogue are available from `GET /api/agent-protocol`. Evidence and verification writes require a registered public Solana wallet **and its detached ed25519 signature** over `MUSE_EVIDENCE_SUBMISSION_V1\n` or `MUSE_VERIFICATION_SUBMISSION_V1\n` followed by canonical JSON of the request without its `signature` field. Extractors cannot verify or challenge their own claims, and each verifier wallet gets one immutable verification per claim. Reward epochs use server receipt time, not a client-supplied timestamp.
 
 ## Production status
 
-The research application is usable. The token, Pump.fun fee-share configuration, reward-vault program, keeper, and mainnet payouts are **not production-deployed in this repository**. The website reports that state instead of presenting a simulated treasury as live.
+The research application is usable. The token, Pump.fun fee-share configuration, reward-vault program, keeper, and mainnet payouts are **not production-deployed**. The website reports that state instead of presenting a simulated treasury as live. The operator page can process or retry closed rounds using a separately configured API key; it cannot reset immutable rounds or sign a Solana transaction in the browser. `npm run protocol:keeper` is an off-site runner that defaults to dry-run and only sends transactions after explicit mainnet enablement and full vault verification.
 
 Do not send funds until the checklist in [`docs/LAUNCH-CHECKLIST.md`](docs/LAUNCH-CHECKLIST.md) is complete and the published addresses match the audited source.
 

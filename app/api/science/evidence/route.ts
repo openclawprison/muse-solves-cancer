@@ -1,13 +1,15 @@
 import { env } from 'cloudflare:workers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { canonicalJson, contentAddress, epochIdFor } from '@/lib/evidence-graph';
-import { assertFreshTimestamp, normaliseWallet } from '@/lib/signatures';
+import { canonicalJson, contentAddress } from '@/lib/evidence-graph';
+import { writableRoundId } from '@/lib/round-clock';
+import { assertFreshTimestamp, normaliseWallet, verifyWalletMessage } from '@/lib/signatures';
 
 const hexHash = z.string().regex(/^[a-f0-9]{64}$/i);
 const inputSchema = z.object({
   wallet: z.string().trim().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/),
   timestamp: z.number().int(),
+  signature: z.string().trim().min(80).max(120),
   source: z.object({
     type: z.enum(['pubmed', 'clinical-trial', 'dataset', 'preprint', 'other']),
     externalId: z.string().trim().min(1).max(160),
@@ -33,6 +35,10 @@ export async function POST(request: Request) {
     const input = inputSchema.parse(await request.json());
     assertFreshTimestamp(input.timestamp);
     const wallet = normaliseWallet(input.wallet);
+    const { signature, ...signedPayload } = input;
+    await verifyWalletMessage(wallet, `MUSE_EVIDENCE_SUBMISSION_V1\n${canonicalJson(signedPayload)}`, signature);
+    const receivedAt = Date.now();
+    const epochId = await writableRoundId(receivedAt);
     const registered = await env.DB.prepare('SELECT 1 FROM agents WHERE wallet = ?').bind(wallet).first();
     if (!registered) throw new Error('Register this wallet as a MUSE agent before adding evidence.');
 
@@ -59,7 +65,7 @@ export async function POST(request: Request) {
       input.source.contentHash.toLowerCase(),
       canonicalJson(input.source.metadata),
       wallet,
-      input.timestamp,
+      receivedAt,
     )];
 
     const claimRecords = [];
@@ -79,7 +85,7 @@ export async function POST(request: Request) {
          (id, evidence_hash, extractor_wallet, claim_type, claim_text, structured_json, extraction_hash, epoch_id, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(id) DO NOTHING`,
-      ).bind(id, evidenceHash, wallet, claim.type, claim.text, canonicalJson(claim.structured), extractionHash, epochIdFor(input.timestamp), input.timestamp));
+      ).bind(id, evidenceHash, wallet, claim.type, claim.text, canonicalJson(claim.structured), extractionHash, epochId, receivedAt));
     }
     const newClaimIds = new Set(claimRecords.map((claim) => claim.id));
     for (const claim of claimRecords) {
@@ -95,7 +101,7 @@ export async function POST(request: Request) {
            (id, source_claim_id, target_claim_id, relation, rationale, creator_wallet, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(source_claim_id, target_claim_id, relation) DO NOTHING`,
-        ).bind(id, claim.id, relation.targetClaimId, relation.relation, relation.rationale, wallet, input.timestamp));
+        ).bind(id, claim.id, relation.targetClaimId, relation.relation, relation.rationale, wallet, receivedAt));
       }
     }
     await env.DB.batch(statements);

@@ -2,8 +2,8 @@ import { env } from 'cloudflare:workers';
 import { and, asc, eq, lt } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { epochs, submissions } from '@/db/schema';
+import { isRoundClosed, roundClock, roundStartedAt } from '@/lib/round-clock';
 
-const HOUR_MS = 20 * 60 * 1000;
 const STALE_LOCK_MS = 15 * 60_000;
 const MAX_SUBMISSIONS_PER_EPOCH = 60;
 
@@ -37,11 +37,11 @@ function integerWithin(value: number, minimum: number, maximum: number) {
   return Number.isInteger(value) && value >= minimum && value <= maximum;
 }
 
-export async function settleEpoch(epochId = Math.floor(Date.now() / HOUR_MS) - 1) {
+export async function settleEpoch(epochId?: number) {
   const now = Date.now();
-  const currentEpoch = Math.floor(now / HOUR_MS);
-  if (!Number.isInteger(epochId) || epochId < 0 || epochId >= currentEpoch) {
-    throw new Error('Only a closed 20-minute epoch can be scored.');
+  epochId ??= (await roundClock(now)).latestClosedEpoch;
+  if (!(await isRoundClosed(epochId, now))) {
+    throw new Error('Only a closed research round can be scored.');
   }
 
   const lock = await env.DB.prepare(
@@ -51,7 +51,7 @@ export async function settleEpoch(epochId = Math.floor(Date.now() / HOUR_MS) - 1
      WHERE epochs.status IN ('awaiting_ai', 'failed')
         OR (epochs.status = 'scoring' AND COALESCE(epochs.locked_at, 0) < ?)`,
   )
-    .bind(epochId, epochId * HOUR_MS, now, now - STALE_LOCK_MS)
+    .bind(epochId, await roundStartedAt(epochId), now, now - STALE_LOCK_MS)
     .run();
 
   if ((lock.meta.changes ?? 0) === 0) {
@@ -208,7 +208,7 @@ export async function settleEpoch(epochId = Math.floor(Date.now() / HOUR_MS) - 1
 }
 
 export async function settleNextEpoch() {
-  const currentEpoch = Math.floor(Date.now() / HOUR_MS);
+  const currentEpoch = (await roundClock()).latestClosedEpoch + 1;
   const pending = await getDb()
     .select({ epochId: submissions.epochId })
     .from(submissions)

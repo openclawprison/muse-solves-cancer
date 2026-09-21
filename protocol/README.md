@@ -1,6 +1,6 @@
 # MUSE funding protocol
 
-This directory contains the proposed Solana reward-vault program and deterministic payout-manifest tooling. It is source code for review and testing, not a claim that a mainnet contract is deployed.
+This repository includes the proposed Anchor reward-vault source under `programs/muse-reward-vault`, deterministic payout-manifest tooling, and a separate automated keeper runner. The program is **not audited or deployed**; this code cannot send real payouts until the vault is built, tested, audited, and deployed with a real program ID.
 
 ## Funding path
 
@@ -15,7 +15,7 @@ This directory contains the proposed Solana reward-vault program and determinist
 7. Every closed 20-minute epoch produces a deterministic public JSON manifest. The configured keeper commits its root and exact full-balance budget onchain.
 8. Any keeper can submit each Merkle leaf. The program pays METAx to the bound recipient ATA and creates a receipt PDA, preventing duplicate payment.
 
-The reward vault intentionally has no owner withdrawal instruction. Before production deployment, the program ID must be replaced with `anchor keys sync`, tests must run against a local validator, an independent security audit must be completed, and the deployed program's upgrade authority must be revoked.
+The reward vault source has no owner withdrawal instruction. Before production deployment, its IDL and real program ID must be generated, local-validator integration tests and an independent audit must be completed, and the deployed program's upgrade authority must be revoked.
 
 ## What the program enforces
 
@@ -59,3 +59,9 @@ The provenance file can contain `scienceProtocol`, `rewardRuleVersion`, `rewardC
 `ANCHOR_PROVIDER_URL` selects the Solana RPC and `ANCHOR_WALLET` points to the local deployer or keeper keypair. Never commit or paste that keypair into the website. The mint and keeper public key are intentionally late-bound launch inputs.
 
 The Node tests cover exact full-balance allocation, deterministic remainders, manifest determinism, proof verification, tamper detection, and duplicate recipients. Anchor/Solana tooling is required for program compilation and validator tests.
+
+## Automated keeper (not yet enabled)
+
+Run the keeper on a separate machine or service, never in the public website. For dry-run, set `MUSE_SITE_URL`, `MUSE_OPERATOR_API_KEY`, `MUSE_KEEPER_STATE_DIR`, and `MUSE_KEEPER_START_EPOCH`. Before sending real payments, additionally set `MUSE_REWARD_PROGRAM_ID`, `MUSE_REWARD_MINT`, `MUSE_EXPECTED_GENESIS_HASH`, `MUSE_KEEPER_ADDRESS`, `ANCHOR_PROVIDER_URL`, `ANCHOR_WALLET`, and `MUSE_IDL_PATH`. The state directory must be persistent and private; the wallet keypair file must be readable only by the keeper process. Run exactly one keeper instance. The public website receives the operator API credential, but never the wallet keypair.
+
+`npm run protocol:keeper -- --once` performs one dry-run inspection by default. Once the audited program and fee route have been verified, explicitly set `MUSE_ENABLE_MAINNET_PAYMENTS=true` in the keeper's private environment and run `npm run protocol:keeper` as a supervised service. It scans closed rounds once per minute, seals one manifest per funded round, retries failed transactions without changing that manifest, skips receipt-proven payouts, and reports the result to the operator ledger. It cannot settle a round with no eligible contributors or no METAx in the vault. The site uses a restartable 25-minute research window followed by a five-minute distribution window. The current vault source still enforces a separate 20-minute UTC minimum-age guard for monotonically increasing epoch IDs; after a manual restart, that guard can delay settlement beyond the five-minute target. A production timing guarantee requires updating and testing that on-chain rule before launch.

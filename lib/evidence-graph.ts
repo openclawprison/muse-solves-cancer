@@ -74,7 +74,7 @@ type VerificationRow = {
   output_hash: string;
 };
 
-export async function recomputeConsensus(claimId: string, createdAt = Date.now()) {
+export async function recomputeConsensus(claimId: string, createdAt = Date.now(), rewardEpochId = epochIdFor(createdAt)) {
   const rows = await env.DB.prepare(
     `SELECT id, verifier_wallet, result, confidence_bps, output_hash
      FROM verification_runs WHERE claim_id = ? ORDER BY verifier_wallet, id`,
@@ -126,12 +126,12 @@ export async function recomputeConsensus(claimId: string, createdAt = Date.now()
 
   if (verdict === 'supported' || verdict === 'refuted') {
     const claim = await env.DB.prepare(
-      'SELECT extractor_wallet, epoch_id FROM claims WHERE id = ?',
-    ).bind(claimId).first<{ extractor_wallet: string; epoch_id: number }>();
+      'SELECT extractor_wallet FROM claims WHERE id = ?',
+    ).bind(claimId).first<{ extractor_wallet: string }>();
     if (claim) {
       await insertRewardEvent({
         wallet: claim.extractor_wallet,
-        epochId: claim.epoch_id,
+        epochId: rewardEpochId,
         eventType: verdict === 'supported' ? 'consensus-supported-claim' : 'consensus-refuted-claim',
         objectId: claimId,
         points: verdict === 'supported' ? 20 : 6,

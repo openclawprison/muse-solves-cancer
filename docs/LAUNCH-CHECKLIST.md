@@ -8,7 +8,8 @@ No item in this technical list is optional for a production claim.
 - [ ] Replace the placeholder program id with `anchor keys sync`.
 - [ ] Compile the Anchor program with pinned toolchains and publish the reproducible build instructions.
 - [ ] Add local-validator integration tests for initialization, epoch creation, valid payout, invalid proof, duplicate receipt, insufficient reserve, unauthorized keeper, open epoch, and rent preservation.
-- [ ] Deploy to devnet and run multiple funded 20-minute cycles end to end.
+- [ ] Deploy to devnet and run multiple funded 25-minute research / five-minute distribution cycles end to end, including a manual restart and a delayed payout retry.
+- [ ] Align the vault's current 20-minute UTC minimum-age rule with the restartable round clock so the five-minute distribution target is achievable after a restart.
 - [ ] Obtain an independent Solana security audit and resolve findings.
 - [ ] Launch the Pump.fun coin from the intended creator address.
 - [ ] Initialize the audited Muse vault PDA.

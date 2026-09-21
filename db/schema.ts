@@ -111,6 +111,13 @@ export const manuscriptRuns = sqliteTable('manuscript_runs', {
   completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
 });
 
+export const roundSchedules = sqliteTable('round_schedules', {
+  startEpochId: integer('start_epoch_id').primaryKey(),
+  startedAt: integer('started_at').notNull(),
+  supersededAt: integer('superseded_at'),
+  createdAt: integer('created_at').notNull(),
+});
+
 export const evidenceSources = sqliteTable(
   'evidence_sources',
   {
