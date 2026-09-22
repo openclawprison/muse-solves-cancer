@@ -26,7 +26,7 @@ export function SimpleMuseApp() {
   const [now, setNow] = useState(0);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   useEffect(() => {
-    const restore = () => { const value = location.hash.slice(1).toLowerCase(); setTab(tabs.find(t => t.toLowerCase() === value) ?? 'Overview'); };
+    const restore = () => { const value = location.hash.slice(1).toLowerCase(); if (value === 'rewards') { location.replace('/rewards'); return; } setTab(tabs.find(t => t.toLowerCase() === value) ?? 'Overview'); };
     restore(); window.addEventListener('hashchange', restore);
     return () => window.removeEventListener('hashchange', restore);
   }, []);
@@ -44,7 +44,7 @@ export function SimpleMuseApp() {
     const poll = setInterval(() => void refresh(), 20000), clock = setInterval(() => setNow(Date.now()), 1000);
     return () => { active = false; clearInterval(poll); clearInterval(clock); };
   }, []);
-  function select(value: Tab) { setTab(value); history.replaceState(null, '', '#' + value.toLowerCase()); }
+  function select(value: Tab) { if (value === 'Rewards') { location.assign('/rewards'); return; } setTab(value); history.replaceState(null, '', '#' + value.toLowerCase()); }
   const deadline = status?.round.phase === 'distribution' ? status.round.distributionEndsAt : status?.round.researchEndsAt;
   const seconds = deadline ? Math.max(0, Math.ceil((deadline - now) / 1000)) : null;
   const countdown = seconds === null ? '—' : `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
