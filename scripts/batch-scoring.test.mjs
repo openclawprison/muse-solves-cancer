@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import { scoreInBatches, validateScores, reconcileExactCopies } from '../lib/batch-scoring.mjs';
+import { scoreInBatches, validateScores, reconcileExactCopies, requestBody } from '../lib/batch-scoring.mjs';
 function fixture(){const sql=new DatabaseSync(':memory:');sql.exec(readFileSync(new URL('../drizzle/0010_parallel_preak.sql',import.meta.url),'utf8').replaceAll('--> statement-breakpoint',''));sql.exec('CREATE TABLE scoring_job_failures(response_id TEXT PRIMARY KEY,epoch_id INTEGER,payload_json TEXT,reason TEXT,created_at INTEGER)');const db={prepare(query){let args=[];return{bind(...a){args=a;return this;},async all(){return{results:sql.prepare(query).all(...args)};},async run(){return {meta:sql.prepare(query).run(...args)};}};},async batch(statements){sql.exec('BEGIN');try{const out=[];for(const s of statements)out.push(await s.run());sql.exec('COMMIT');return out;}catch(e){sql.exec('ROLLBACK');throw e;}}};return{db,sql};}
 const row=i=>({id:'id-'+i,wallet:'wallet-'+i,title:'Study '+i,abstract:'Distinct evidence contribution '+i,workType:'evidence-extraction',evidenceUrl:'https://example.org/'+i});
 const score=id=>({id,rigor:20,reproducibility:20,novelty:5,evidence:10,collaboration:5,reason:'Useful checked evidence',duplicateRisk:false,safetyConcern:false});
@@ -16,10 +16,25 @@ test('100 submissions: batches <=15, concurrency <=3, durable resume and full-co
   const again=await scoreInBatches({db,rows,epochId:5,model:'test',apiKey:'mock',fetcher,now});assert.equal(again.scores.length,100);assert.equal(creates,7,'completed jobs are not reissued after resume');
   await assert.rejects(()=>scoreInBatches({db,rows:[...rows,row(101)],epochId:5,model:'test',apiKey:'mock',fetcher,now}),/input changed/);sql.close();
 });
-test('invalid results are archived and stop after three attempts without scores',async()=>{
+test('invalid results are archived, back off and recover after the old three-failure stop',async()=>{
   const {db,sql}=fixture();let n=0;const fetcher=async()=>({ok:true,status:200,json:async()=>({id:'resp_bad'+(++n),...payload([])})});let now=1000;
-  for(let i=0;i<3;i++){const r=await scoreInBatches({db,rows:[row(1)],epochId:6,model:'test',apiKey:'mock',fetcher,now});assert.equal(r.status,'scoring');now+=16000;}
-  await assert.rejects(()=>scoreInBatches({db,rows:[row(1)],epochId:6,model:'test',apiKey:'mock',fetcher,now}),/operator review/);assert.equal(sql.prepare('SELECT count(*) n FROM scoring_job_failures').get().n,3);sql.close();
+  for(let i=0;i<3;i++){const r=await scoreInBatches({db,rows:[row(1)],epochId:6,model:'test',apiKey:'mock',fetcher,now});assert.equal(r.status,'scoring');now+=130000;}
+  const recovered=await scoreInBatches({db,rows:[row(1)],epochId:6,model:'test',apiKey:'mock',fetcher:async()=>({ok:true,status:200,json:async()=>({id:'resp_recovered',...payload([row(1)])})}),now});assert.equal(recovered.status,'complete');assert.equal(sql.prepare('SELECT count(*) n FROM scoring_job_failures').get().n,3);sql.close();
+});
+
+test('ID-keyed output requires every ID and rejects key mismatch, while accepting fenced legacy JSON',()=>{
+  const rows=[row(1),row(2)],body=requestBody(rows,1,'test');
+  assert.deepEqual(body.text.format.schema.properties.scores.required,['id-1','id-2']);
+  const keyed={output:[{content:[{type:'output_text',text:JSON.stringify({scores:Object.fromEntries(rows.map(r=>[r.id,score(r.id)]))})}]}]};
+  assert.equal(validateScores(keyed,rows).length,2);
+  keyed.output[0].content[0].text=JSON.stringify({scores:{'id-1':score('id-2')}});assert.throws(()=>validateScores(keyed,rows));
+  const legacy=payload(rows);legacy.output[0].content[0].text='```json\n'+legacy.output[0].content[0].text+'\n```';assert.equal(validateScores(legacy,rows).length,2);
+});
+
+test('persistent malformed output enters a 15-minute cooldown and never releases scores',async()=>{
+ const {db,sql}=fixture();let calls=0,now=1000;const args={db,rows:[row(1)],epochId:8,model:'test',apiKey:'mock',fetcher:async()=>({ok:true,status:200,json:async()=>({id:'resp_bad'+(++calls),...payload([])})})};
+ for(let i=0;i<6;i++){assert.equal((await scoreInBatches({...args,now})).status,'scoring');now=sql.prepare('SELECT next_attempt_at FROM scoring_batches').get().next_attempt_at;}
+ await scoreInBatches({...args,now:now-1});assert.equal(calls,6);assert.equal(sql.prepare('SELECT scores_json FROM scoring_batches').get().scores_json,null);sql.close();
 });
 test('429 retries back off without pretending a batch completed',async()=>{
   const {db,sql}=fixture();let calls=0;const fetcher=async()=>{calls++;return{ok:false,status:429,json:async()=>({})};};const args={db,rows:[row(1)],epochId:7,model:'test',apiKey:'mock',fetcher};
