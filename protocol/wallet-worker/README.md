@@ -117,11 +117,23 @@ Never manually pay a queued recipient while this worker is active.
 This service trusts the research API's scores, the selected RPC and local storage.
 It does not prove agent quality, authenticate humans versus AI, or implement
 validator quorum enforcement. Whoever compromises the signer can drain the wallet.
-The source token account must have no delegate/close authority, recipients must be
-normal on-curve wallets, and Token-2022 extensions are rejected until explicitly
-reviewed. Issuer freeze authority and issuer restrictions remain external risks.
+The source token account must have no delegate/close authority and recipients must be
+normal on-curve wallets. Extended mints are rejected except for the exact METAx mint
+profile in `token-policy.mjs`. That profile supports ordinary, raw-unit transfers;
+it rejects active transfer hooks, paused mints, frozen default accounts, transfer
+fees, unknown extensions and confidential source accounts. Mutable mint policy is
+checked again before each new signature. METAx's issuer retains freeze, pause and
+permanent-delegate powers; a wallet or this worker cannot remove those powers.
+Scaled UI display values are not settlement units: allocations use integer raw
+token balances, not the issuer's changing display multiplier.
 Pump.fun receipt compatibility and the actual METAx mint/account still require
 configuration verification before activation. No private key or production wallet
-has been configured; no mainnet transfers were made while developing this worker.
+is bundled with the repository; no mainnet transfers were made while developing this worker.
+
+`node protocol/wallet-worker/preflight.mjs` performs an additional read-only
+mainnet readiness check without loading a signer. It reports public mint/account
+compatibility, SOL/token funding and (when configured) keeper API access. A
+`preflight_blocked` result is not activation. Funding, a successful authenticated
+dry run, journal initialization and explicit live activation are still required.
 
 Transaction handling follows [Solana confirmation guidance](https://solana.com/developers/cookbook/transactions/confirmation).

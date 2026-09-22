@@ -3,6 +3,7 @@ import { loadSigner } from './signer.mjs';
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getMint, getAccount, getAssociatedTokenAddressSync,
   createAssociatedTokenAccountIdempotentInstruction, createTransferCheckedInstruction } from '@solana/spl-token';
 import bs58 from 'bs58';
+import { validateMintPolicy, validateAccountPolicy } from './token-policy.mjs';
 
 export async function connectChain(config, injectedConnection) {
   const connection = injectedConnection ?? new Connection(config.rpc, {commitment:'finalized', fetch: (url,options) =>
@@ -14,8 +15,13 @@ export async function connectChain(config, injectedConnection) {
   const mintInfo = await connection.getAccountInfo(mint,'finalized');
   if (!mintInfo || ![TOKEN_PROGRAM_ID.toBase58(),TOKEN_2022_PROGRAM_ID.toBase58()].includes(mintInfo.owner.toBase58())) throw new Error('Unsupported mint owner');
   const program = mintInfo.owner;
-  const token = await getMint(connection,mint,'finalized',program);
-  if (!token.isInitialized || token.decimals !== config.decimals || token.tlvData.length) throw new Error('Mint decimals mismatch or unreviewed Token-2022 extensions');
+  async function checkedMint() {
+    const token = await getMint(connection,mint,'finalized',program);
+    if (!token.isInitialized || token.decimals !== config.decimals) throw new Error('Mint decimals mismatch');
+    validateMintPolicy(token,program);
+    return token;
+  }
+  const token = await checkedMint();
   // Transfer fees/hooks/confidential balances must never silently change payouts.
   let signer;
   if (config.live) {
@@ -23,7 +29,8 @@ export async function connectChain(config, injectedConnection) {
   }
   async function account() {
     const result = await getAccount(connection,source,'finalized',program);
-    if (!result.isInitialized || !result.owner.equals(treasury) || !result.mint.equals(mint) || result.isFrozen || result.delegate || result.closeAuthority || result.tlvData.length) throw new Error('Source token account failed safety checks');
+    if (!result.isInitialized || !result.owner.equals(treasury) || !result.mint.equals(mint) || result.isFrozen || result.delegate || result.closeAuthority) throw new Error('Source token account failed safety checks');
+    validateAccountPolicy(result,mint,program);
     return result;
   }
   await account();
@@ -37,6 +44,7 @@ export async function connectChain(config, injectedConnection) {
     async validateRecipients(payouts) { for (const payout of payouts) recipient(payout.wallet); },
     async prepare(payout) {
       if (!signer) throw new Error('Signing disabled');
+      await checkedMint(); // Recheck mutable issuer controls before every signature.
       if ((await account()).amount < BigInt(payout.amountRewardUnits)) throw new Error('Treasury token balance insufficient');
       const owner = recipient(payout.wallet);
       const destination = getAssociatedTokenAddressSync(mint,owner,false,program);
