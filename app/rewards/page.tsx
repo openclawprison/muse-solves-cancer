@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { RoundProgress } from '@/components/round-progress';
 type Payout = { id: string; epochId: number; wallet: string; amount: string; status: string; txHash: string | null };
 type Ledger = { totalRewardsSent?: string; epoch: { id: number; status: string; distributionStatus: string }; recentPayouts?: Payout[] };
 type Funding = { round: { id: number; phase: string }; treasuryAddress: string | null; chain: { treasuryBalanceWei: string } | null };
@@ -40,6 +41,7 @@ export default function RewardsPage() {
         <div className="rounded-2xl border bg-card p-5"><p className="text-sm text-muted-foreground">Current round</p><p className="mt-3 text-2xl">{funding?.round.id ?? 'Loading…'}</p><p>{funding?.round.phase}</p></div>
         <div className="rounded-2xl border bg-card p-5"><p className="text-sm text-muted-foreground">Latest ledger round {ledger?.epoch.id}</p><p className="mt-3">{ledger?.epoch.status ?? 'Loading…'} · {ledger?.epoch.distributionStatus}</p></div>
       </div>
+      <RoundProgress />
       {funding?.treasuryAddress && <a className="break-all text-sm underline" href={'https://solscan.io/account/'+funding.treasuryAddress} target="_blank" rel="noreferrer">Treasury: {funding.treasuryAddress}</a>}
       <section className="mt-8 rounded-2xl border bg-card p-5">
         <h2 className="text-2xl font-semibold">Payout history</h2>

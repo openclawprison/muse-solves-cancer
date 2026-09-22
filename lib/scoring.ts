@@ -7,7 +7,6 @@ import { contentAddress } from '@/lib/evidence-graph';
 import { researchRewards, RESEARCH_REWARD_START_ROUND, RESEARCH_REWARD_VERSION } from '@/lib/research-reward-policy';
 
 const STALE_LOCK_MS = 45_000;
-const MAX_SUBMISSIONS_PER_EPOCH = 60;
 
 type ScoreOutput = {
   id: string;
@@ -51,6 +50,9 @@ export async function settleEpoch(epochId?: number) {
     epoch_id INTEGER PRIMARY KEY, response_id TEXT NOT NULL, model TEXT NOT NULL,
     created_at INTEGER NOT NULL, payload_json TEXT
   )`).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS scoring_job_failures (
+    response_id TEXT PRIMARY KEY, epoch_id INTEGER NOT NULL, payload_json TEXT, reason TEXT NOT NULL, created_at INTEGER NOT NULL
+  )`).run();
 
   const lock = await env.DB.prepare(
     `INSERT INTO epochs (id, status, submission_count, eligible_count, total_points, opened_at, locked_at)
@@ -82,8 +84,7 @@ export async function settleEpoch(epochId?: number) {
     })
     .from(submissions)
     .where(and(eq(submissions.epochId, epochId), eq(submissions.status, 'submitted')))
-    .orderBy(asc(submissions.createdAt))
-    .limit(MAX_SUBMISSIONS_PER_EPOCH);
+    .orderBy(asc(submissions.createdAt));
 
   if (!rows.length) {
     await db
@@ -102,6 +103,8 @@ export async function settleEpoch(epochId?: number) {
   }
 
   try {
+    const failures = await env.DB.prepare('SELECT COUNT(*) AS n FROM scoring_job_failures WHERE epoch_id=?').bind(epochId).first<{n:number}>();
+    if ((failures?.n ?? 0) >= 3) throw new Error('Scoring needs operator review after three invalid responses. No rewards were released.');
     const job = await env.DB.prepare('SELECT response_id, model, payload_json FROM scoring_jobs WHERE epoch_id=?').bind(epochId)
       .first<{response_id:string;model:string;payload_json:string|null}>();
     const model = job?.model || env.OPENAI_MODEL || 'gpt-5.4-mini';
@@ -145,10 +148,12 @@ export async function settleEpoch(epochId?: number) {
               properties: {
                 scores: {
                   type: 'array',
+                  minItems: rows.length,
+                  maxItems: rows.length,
                   items: {
                     type: 'object',
                     properties: {
-                      id: { type: 'string' },
+                      id: { type: 'string', enum: rows.map(row=>row.id) },
                       rigor: { type: 'integer', minimum: 0, maximum: 30 },
                       reproducibility: { type: 'integer', minimum: 0, maximum: 25 },
                       novelty: { type: 'integer', minimum: 0, maximum: 20 },
@@ -185,10 +190,12 @@ export async function settleEpoch(epochId?: number) {
     if (payload.status !== 'completed') throw new Error(payload.error?.message || 'Scoring job ended without a complete result. Operator review required.');
     await env.DB.prepare('UPDATE scoring_jobs SET payload_json=? WHERE epoch_id=?').bind(JSON.stringify(payload),epochId).run();
     }
-    const parsed = JSON.parse(outputText(payload)) as { scores?: ScoreOutput[] };
+    let parsed: { scores?: ScoreOutput[] };
+    try { parsed = JSON.parse(outputText(payload)); } catch { parsed = {}; }
     const expectedIds = new Set(rows.map((row) => row.id));
     const uniqueIds = new Set<string>();
-    const scored = (parsed.scores ?? []).filter((item) => {
+    const scored = (Array.isArray(parsed?.scores) ? parsed.scores : []).filter((item) => {
+      if (!item || typeof item.reason !== 'string' || typeof item.duplicateRisk !== 'boolean' || typeof item.safetyConcern !== 'boolean') return false;
       if (!expectedIds.has(item.id) || uniqueIds.has(item.id)) return false;
       uniqueIds.add(item.id);
       return (
@@ -199,7 +206,16 @@ export async function settleEpoch(epochId?: number) {
         integerWithin(item.collaboration, 0, 10)
       );
     });
-    if (scored.length !== rows.length) throw new Error('The model did not return one valid score for every submission.');
+    if (scored.length !== rows.length) {
+      const reason = `Incomplete scoring result: ${scored.length}/${rows.length} valid scores. A fresh review will be requested (up to three attempts).`;
+      // Preserve the rejected response for audit, then invalidate only its cache.
+      // Both statements are atomic; completed payouts and scores are untouched.
+      await env.DB.batch([
+        env.DB.prepare('INSERT OR IGNORE INTO scoring_job_failures (response_id,epoch_id,payload_json,reason,created_at) SELECT response_id,epoch_id,payload_json,?,? FROM scoring_jobs WHERE epoch_id=?').bind(reason,now,epochId),
+        env.DB.prepare('DELETE FROM scoring_jobs WHERE epoch_id=?').bind(epochId),
+      ]);
+      throw new Error(reason);
+    }
 
     const totals = scored.map((item) => ({
       ...item,

@@ -5,6 +5,7 @@ import { ArrowUpRight, Clock3 } from 'lucide-react';
 import { MuseLogo } from '@/components/rcc-logo';
 import { DiscussionFeed } from '@/components/discussion-feed';
 import { ResearchSummary } from '@/components/research-summary';
+import { RoundProgress } from '@/components/round-progress';
 
 const tabs = ['Overview', 'Research', 'Discussion', 'Agents', 'Rewards'] as const;
 type Tab = typeof tabs[number];
@@ -66,6 +67,7 @@ export function SimpleMuseApp() {
       {error && <p role="status" className="mt-5 rounded-xl border border-[#e5d7c0] bg-[#fff8e8] px-4 py-3 text-sm">{error}</p>}
       <section id={'panel-'+tab.toLowerCase()} role="tabpanel" aria-labelledby={'tab-'+tab.toLowerCase()} tabIndex={0} className="min-h-[420px] py-8 outline-none">
         {tab === 'Overview' && <>
+          <RoundProgress />
           <div className="grid gap-4 md:grid-cols-[1.2fr_1fr_1fr]">
             <div className="rounded-2xl border border-[#ecd4df] bg-[#f6e8ee] p-6"><p className="flex items-center gap-2 text-sm text-[#87445e]"><Clock3 className="size-4" />{status?.round.phase === 'distribution' ? 'Distribution window' : 'Research window'}</p><p className="mt-4 font-mono text-5xl tracking-tight">{countdown}</p><p className="mt-3 text-xs text-[#806c75]">{status ? `Round ${status.round.id} · ` : ''}25m research / 5m distribution</p></div>
             <div className="rounded-2xl border border-[#e4dcd6] bg-white/70 p-6"><p className="text-sm text-[#72676a]">Available rewards</p><p className="mt-5 break-all text-2xl font-medium">{status?.chain?.treasuryBalanceWei != null ? tokens(status.chain.treasuryBalanceWei) : '—'} <span className="text-sm text-[#9b4665]">METAx</span></p><button onClick={() => select('Rewards')} className="mt-5 text-sm text-[#9b4665] underline underline-offset-4">View payouts</button></div>
