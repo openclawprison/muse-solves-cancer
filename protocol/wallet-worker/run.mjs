@@ -5,6 +5,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { openJournal } from './journal.mjs';
 import { connectChain } from './solana.mjs';
 import { tick } from './engine.mjs';
+import { loadSigner } from './signer.mjs';
 
 function required(name) {
   if (!process.env[name]) throw new Error(`Missing ${name}`);
@@ -22,6 +23,13 @@ function integer(name) {
 }
 
 async function main() {
+  if (process.argv.includes('--check-signer')) {
+    if (process.env.MUSE_ENABLE_WALLET_PAYMENTS === 'true') throw new Error('Disable payments before checking signer');
+    const signer = loadSigner({keyFile:process.env.MUSE_TREASURY_KEYPAIR_FILE,
+      secretKey:process.env.MUSE_TREASURY_SECRET_KEY,treasury:required('MUSE_TREASURY_ADDRESS')});
+    console.log(JSON.stringify({status:'signer_verified',publicAddress:signer.publicKey.toBase58(),paymentsEnabled:false}));
+    return; // No RPC, journal access, signatures or transfers in this mode.
+  }
   const origin = https(required('MUSE_SITE_URL'));
   if (origin.pathname !== '/' || origin.search) throw new Error('Site URL must be an origin');
   const live = process.env.MUSE_ENABLE_WALLET_PAYMENTS === 'true';
@@ -29,7 +37,8 @@ async function main() {
     live, rpc:https(required('MUSE_CHAIN_RPC_URL')).href,
     genesis:required('MUSE_EXPECTED_GENESIS_HASH'), treasury:required('MUSE_TREASURY_ADDRESS'),
     mint:required('MUSE_REWARD_MINT'), decimals:integer('MUSE_REWARD_DECIMALS'), source:required('MUSE_REWARD_TOKEN_ACCOUNT'),
-    keyFile:live ? required('MUSE_TREASURY_KEYPAIR_FILE') : null,
+    keyFile:live ? process.env.MUSE_TREASURY_KEYPAIR_FILE : null,
+    secretKey:live ? process.env.MUSE_TREASURY_SECRET_KEY : null,
   };
   if (config.keyFile && !isAbsolute(config.keyFile)) throw new Error('Signer file path must be absolute');
   const directory = required('MUSE_WALLET_STATE_DIR');

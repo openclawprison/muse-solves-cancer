@@ -1,5 +1,5 @@
-import { readFileSync, statSync } from 'node:fs';
-import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction } from '@solana/web3.js';
+import { loadSigner } from './signer.mjs';
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getMint, getAccount, getAssociatedTokenAddressSync,
   createAssociatedTokenAccountIdempotentInstruction, createTransferCheckedInstruction } from '@solana/spl-token';
 import bs58 from 'bs58';
@@ -19,11 +19,7 @@ export async function connectChain(config, injectedConnection) {
   // Transfer fees/hooks/confidential balances must never silently change payouts.
   let signer;
   if (config.live) {
-    if (process.platform !== 'win32' && (statSync(config.keyFile).mode & 0o077)) throw new Error('Signer file must not be accessible by group/others');
-    const bytes = JSON.parse(readFileSync(config.keyFile,'utf8'));
-    if (!Array.isArray(bytes) || bytes.length !== 64 || bytes.some(b => !Number.isInteger(b) || b < 0 || b > 255)) throw new Error('Invalid signer file');
-    signer = Keypair.fromSecretKey(Uint8Array.from(bytes));
-    if (!signer.publicKey.equals(treasury)) throw new Error('Signer does not match treasury');
+    signer = loadSigner(config);
   }
   async function account() {
     const result = await getAccount(connection,source,'finalized',program);

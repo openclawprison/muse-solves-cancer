@@ -51,6 +51,7 @@ in a chat. The API credential is separate from the wallet key.
 | `MUSE_WALLET_START_EPOCH` | First closed research round this wallet should pay |
 | `MUSE_WALLET_STATE_DIR` | Absolute path on persistent private storage |
 | `MUSE_TREASURY_KEYPAIR_FILE` | Absolute path to secret-mounted 64-byte Solana JSON keypair; live only |
+| `MUSE_TREASURY_SECRET_KEY` | Alternative to the file: sealed host secret containing a base58 private-key export or a 64-byte JSON array. Configure only one signer source. Never a seed phrase. |
 | `MUSE_ENABLE_WALLET_PAYMENTS` | Defaults off; exact `true` enables real transfers |
 
 Initialize a **new, never-used payment journal** once with payments disabled:
@@ -59,6 +60,22 @@ Initialize a **new, never-used payment journal** once with payments disabled:
 node protocol/wallet-worker/run.mjs --initialize
 node protocol/wallet-worker/run.mjs --once
 ```
+
+### Railway signer setup
+
+In the worker service's Variables tab, the wallet owner adds
+`MUSE_TREASURY_SECRET_KEY` directly as a sealed variable. Set
+`MUSE_TREASURY_ADDRESS` to the corresponding public wallet address and leave
+`MUSE_ENABLE_WALLET_PAYMENTS=false`. Do not also set `MUSE_TREASURY_KEYPAIR_FILE`.
+Sealing limits dashboard visibility; the running service still has custody of the
+key. Never include this secret in screenshots, logs, Git or a chat message.
+
+Run `node protocol/wallet-worker/run.mjs --check-signer` to check the match without
+RPC access, signing transactions, journal initialization or transfers. It reports
+only the public address and success status. Ordinary dry-run mode ignores signer
+secrets. Live mode checks the signer again before permitting transfers. Adding a
+secret alone does not enable payments; all remaining chain, API and journal setup
+must be completed before explicitly activating them.
 
 Dry-run requires public chain configuration and the service API credential, but no
 signer. It performs no scoring, token transfers or settlement writes. Then securely
