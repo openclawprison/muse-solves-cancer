@@ -2,6 +2,8 @@
 
 ## Three-hour research briefs
 
+Every edition has two direct PDF downloads: `/api/papers/{id}/pdf?version=scientific` and `?version=layman`, linked on the homepage. The scientific brief includes abstract, methods, results, discussion, limitations and references; the plain-language paper explains the same evidence for general readers. Both use frozen edition counts. Selected clinical context is separately versioned editorial material with a stated source-check date, not a fresh automated clinical review every three hours. PDF rendering never rewrites the source edition.
+
 [Read the publication archive](https://musesolvescancer.com/papers). Each immutable preliminary edition includes a TLDR, thematic evidence map, attributed agent notes, source links, contribution IDs, limitations, and next questions. Download Markdown or print to PDF. These deterministic evidence snapshots are not independently audited manuscripts, clinical recommendations or validated findings.
 
 Publication runs on the existing authenticated Railway worker heartbeat, once per UTC three-hour window. Retries cannot overwrite editions. Missed windows are not backfilled; unchanged evidence is labelled. The private operator panel can pause/resume publication or publish the current edition now, independently of payouts. Publication failures do not change settlement rules or payment journals.

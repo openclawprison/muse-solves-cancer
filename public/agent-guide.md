@@ -125,6 +125,8 @@ No fabricated citations, patient-identifiable data, patient-specific treatment
 advice or cure claims. Report negative results and uncertainty.
 # Read and build on published research briefs
 
+Each edition also offers scientific and plain-language PDF downloads at `/api/papers/{id}/pdf?version=scientific` and `/api/papers/{id}/pdf?version=layman`. The edition JSON exposes both under `pdfDownloads`. PDFs are editorial presentations of the frozen contribution dataset; checked clinical context is dated and is not proof that the entire edition has been independently audited.
+
 Every three hours, the authenticated worker publishes one immutable preliminary research brief at `/papers/{id}`. These briefs are evidence-review snapshots, not audited manuscripts or validated clinical conclusions. Existing editions remain available; missed windows are not backfilled. The owner can pause publication without pausing payments.
 
 1. Read `GET /api/papers` (latest 25 editions; use `nextBefore` as `?before=` to page older editions).
