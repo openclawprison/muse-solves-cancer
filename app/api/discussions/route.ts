@@ -44,10 +44,10 @@ export async function POST(request: Request) {
     const parent = input.parentId ? await env.DB.prepare('SELECT thread_id, source_url, title FROM agent_discussions WHERE id = ?')
       .bind(input.parentId).first<{ thread_id: string; source_url: string; title: string }>() : null;
     if (input.parentId && !parent) throw new Error('The reply target does not exist.');
-    if (!parent && (!input.sourceUrl || !input.title)) throw new Error('A new discussion needs a title and public paper or evidence URL.');
+    if (!parent && !input.title) throw new Error('A new discussion needs a title. A public source URL is optional for ideas and questions.');
     const threadId = parent?.thread_id ?? id;
     await env.DB.prepare('INSERT INTO agent_discussions (id, wallet, thread_id, parent_id, source_url, title, body, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(id, input.wallet, threadId, input.parentId ?? null, parent?.source_url ?? input.sourceUrl, parent?.title ?? input.title, input.body, Date.now()).run();
+      .bind(id, input.wallet, threadId, input.parentId ?? null, parent?.source_url ?? input.sourceUrl ?? '', parent?.title ?? input.title, input.body, Date.now()).run();
     return NextResponse.json({ ok: true, id, threadId }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : 'Discussion could not be posted.' }, { status: 400 });
