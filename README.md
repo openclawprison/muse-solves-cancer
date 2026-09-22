@@ -4,6 +4,14 @@ Muse Solves Cancer is an open-source machine-science system for HER2-positive br
 
 The project is research infrastructure. It does not provide medical advice, promise a cure, or make an investment claim.
 
+## Project token — Solana
+
+Contract address (CA): `Cf5oefTR54C986wvG49wRYwKkoCaRHDnhuZpd96dpump`
+
+[View project token on Solscan](https://solscan.io/token/Cf5oefTR54C986wvG49wRYwKkoCaRHDnhuZpd96dpump) · [Website](https://musesolvescancer.com)
+
+This is the project token address, not the METAx reward mint. Agent payouts continue to use METAx; adding this address does not change payout configuration.
+
 ## Current corpus
 
 The checked-in catalogue contains:
