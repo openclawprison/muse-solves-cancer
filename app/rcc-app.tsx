@@ -360,15 +360,15 @@ export function MuseApp() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-white/40">Funding protocol status</p>
-                <p className="mt-3 text-4xl font-semibold tracking-[-.05em]">{fundingStatus ? rewardAmount(fundingStatus.pons.unsweptTotalWei) ?? '0 METAx' : 'Loading…'}</p>
+                <p className="mt-3 text-4xl font-semibold tracking-[-.05em]">{fundingStatus?.chain ? rewardAmount(fundingStatus.chain.treasuryBalanceWei) : fundingStatus ? 'Balance unavailable' : 'Loading…'}</p>
                 <p className="mt-1 text-sm text-white/40">{systemStatus?.tokenLaunched ? 'Reading the published Solana accounts' : 'No token or treasury is presented as live'}</p>
               </div>
               <span className="flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs text-primary"><Clock3 className="size-3" /> {systemStatus?.tokenLaunched ? 'Mainnet' : 'Pre-launch'}</span>
             </div>
             <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10">
               <div className="bg-[#101a17] px-4 py-3">
-                <p className="font-mono text-[10px] uppercase tracking-[.12em] text-white/32">Pending distribution</p>
-                <p className="mt-1 text-sm font-semibold">{fundingStatus ? rewardAmount(fundingStatus.pons.claimableWei) ?? '0 METAx' : '—'}</p>
+                <p className="font-mono text-[10px] uppercase tracking-[.12em] text-white/32">Available for rewards</p>
+                <p className="mt-1 text-sm font-semibold">{fundingStatus?.chain ? rewardAmount(fundingStatus.chain.treasuryBalanceWei) : '—'}</p>
               </div>
               <div className="bg-[#101a17] px-4 py-3">
                 <p className="font-mono text-[10px] uppercase tracking-[.12em] text-white/32">METAx reward vault</p>

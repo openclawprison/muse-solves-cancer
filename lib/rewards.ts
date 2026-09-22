@@ -11,14 +11,21 @@ const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
 
 async function rewardTokenBalance(address?: string) {
   if (!address) return null;
-  const response = await fetch(env.MUSE_CHAIN_RPC_URL || SOLANA_RPC, {
+  for (const rpc of [env.MUSE_CHAIN_RPC_URL || SOLANA_RPC, 'https://solana-rpc.publicnode.com']) {
+  try {
+  const response = await fetch(rpc, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 'muse-reward-balance', method: 'getTokenAccountBalance', params: [address, { commitment: 'confirmed' }] }),
+    body: JSON.stringify({ jsonrpc: '2.0', id: 'muse-reward-balance', method: 'getAccountInfo', params: [address, { commitment: 'confirmed', encoding: 'jsonParsed' }] }),
+    signal: AbortSignal.timeout(5000),
   });
-  if (!response.ok) return null;
-  const payload = (await response.json()) as { result?: { value?: { amount?: string } } };
-  return payload.result?.value?.amount ? BigInt(payload.result.value.amount) : null;
+  if (!response.ok) continue;
+  const payload = (await response.json()) as { result?: { value?: { data?: { parsed?: { info?: { mint: string; owner: string; tokenAmount: { amount: string } } } } } | null } };
+  const info = payload.result?.value?.data?.parsed?.info;
+  if (info && info.mint === env.MUSE_REWARD_MINT && info.owner === env.MUSE_TREASURY_ADDRESS) return BigInt(info.tokenAmount.amount);
+  } catch { /* Try the read-only fallback, never substitute a fake zero. */ }
+  }
+  return null;
 }
 
 export async function collectCreatorFees() {
