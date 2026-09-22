@@ -57,7 +57,7 @@ export async function tick({journal,site,chain,startEpoch,live,treasury}) {
     const manifest = makePlan(epochId,balance,rewards,treasury);
     if (!live) return {status:'dry_run',epochId,payoutCount:manifest.payouts.length,totalRewardUnits:manifest.totalRewardUnits};
     await chain.validateRecipients(manifest.payouts);
-    round = {epochId,manifest,complete:false,paymentMode:'atomic-batch-v1'};
+    round = {epochId,manifest,complete:false,paymentMode:'sized-batches-v2',batches:await chain.planBatches(manifest.payouts)};
     journal.insert(round);
   }
   if (!live) return {status:'dry_run_pending',epochId:round.epochId};
@@ -65,14 +65,21 @@ export async function tick({journal,site,chain,startEpoch,live,treasury}) {
   // Older sealed rounds retain their original per-recipient attempts. New rounds
   // use one durable attempt at index -1, shared by every recipient in the report.
   const batch = round.paymentMode === 'atomic-batch-v1';
-  for (const payout of batch ? [{index:-1,payouts:round.manifest.payouts}] : round.manifest.payouts) {
+  // Upgrade only an unsigned old atomic round. A signed attempt is never regrouped.
+  if (batch && !journal.attempt(round.epochId,-1)) {
+    round.batches = await chain.planBatches(round.manifest.payouts);
+    round.paymentMode = 'sized-batches-v2';
+    journal.save(round);
+  }
+  const groups = round.paymentMode === 'sized-batches-v2' ? round.batches : batch ? [{index:-1,payouts:round.manifest.payouts}] : round.manifest.payouts;
+  for (const payout of groups) {
     if (!await advancePayment(journal,chain,round.epochId,payout)) return {status:'confirming',epochId:round.epochId,index:payout.index};
   }
   await site.report({
     epochId:round.epochId,manifestHash:round.manifest.manifestHash,merkleRoot:round.manifest.merkleRoot,
     totalRewardUnits:round.manifest.totalRewardUnits,commitTxHash:null,
     payouts:round.manifest.payouts.map(p => ({index:p.index,wallet:p.wallet,score:p.score,amountRewardUnits:p.amountRewardUnits,
-      txHash:journal.attempt(round.epochId,batch ? -1 : p.index).signature})),
+      txHash:journal.attempt(round.epochId,round.paymentMode === 'sized-batches-v2' ? groups.find(g=>g.payouts.some(row=>row.index===p.index)).index : batch ? -1 : p.index).signature})),
   });
   round.complete = true;
   journal.save(round);

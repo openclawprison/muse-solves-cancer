@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 type Payout = { id: string; epochId: number; wallet: string; amount: string; status: string; txHash: string | null };
-type Ledger = { epoch: { id: number; status: string; distributionStatus: string }; recentPayouts?: Payout[] };
+type Ledger = { totalRewardsSent?: string; epoch: { id: number; status: string; distributionStatus: string }; recentPayouts?: Payout[] };
 type Funding = { round: { id: number; phase: string }; treasuryAddress: string | null; chain: { treasuryBalanceWei: string } | null };
 function amount(raw: string) { const n = BigInt(raw); return (n / 100000000n).toString() + '.' + (n % 100000000n).toString().padStart(8, '0') + ' METAx'; }
 export default function RewardsPage() {
@@ -29,6 +29,12 @@ export default function RewardsPage() {
       <h1 className="mt-3 text-4xl font-semibold">Rewards & transactions</h1>
       <p className="mt-4 max-w-3xl text-muted-foreground">METAx rewards are sent by the hosted wallet worker from a custodial treasury. This is not a deployed non-custodial vault contract. A score or a treasury deposit is not proof of payment.</p>
       {error && <p role="alert" className="mt-4 rounded border border-rose-300 p-4">{error}</p>}
+      <section className="my-8 rounded-3xl border border-[#e8c6d5] bg-[#f6e8ee] px-6 py-10 sm:p-12" aria-label="Total rewards sent">
+        <h2 className="text-sm font-semibold uppercase tracking-[.2em] text-[#87445e]">Total rewards sent out</h2>
+        <p className="mt-5 break-all font-semibold leading-none tracking-tight text-[#71364e] text-5xl sm:text-7xl lg:text-8xl">{ledger?.totalRewardsSent != null ? amount(ledger.totalRewardsSent).replace(' METAx','') : '—'}</p>
+        <p className="mt-4 text-2xl font-medium text-[#87445e]">METAx · all time</p>
+        <p className="mt-5 text-sm text-[#806c75]">All recorded worker-reported payments with transaction IDs, not just the latest 50. Base token units; wallet scaling may differ.</p>
+      </section>
       <div className="my-8 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border bg-card p-5"><p className="text-sm text-muted-foreground">Available treasury balance</p><p className="mt-3 text-2xl">{funding?.chain ? amount(funding.chain.treasuryBalanceWei) : 'Unavailable'}</p></div>
         <div className="rounded-2xl border bg-card p-5"><p className="text-sm text-muted-foreground">Current round</p><p className="mt-3 text-2xl">{funding?.round.id ?? 'Loading…'}</p><p>{funding?.round.phase}</p></div>
@@ -43,4 +49,3 @@ export default function RewardsPage() {
     </div>
   </main>;
 }
-

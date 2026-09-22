@@ -64,6 +64,20 @@ test('oversized batch fails before simulation or any broadcast',async t=>{
   f.rpc.simulateTransaction=async()=>assert.fail('must reject size before simulation');
   await assert.rejects(chain.prepareBatch(Array.from({length:30},()=>({wallet:Keypair.generate().publicKey.toBase58(),amountRewardUnits:'1'}))),/single-transaction size/);
 });
+
+test('large rounds split by serialized size without missing or duplicating recipients',async t=>{
+  const f=fixture(t),chain=await connectChain(f.config,f.rpc);
+  const payouts=Array.from({length:30},(_,index)=>({index,wallet:Keypair.generate().publicKey.toBase58(),amountRewardUnits:'1'}));
+  const groups=await chain.planBatches(payouts);
+  assert.ok(groups.length>1);
+  assert.deepEqual(groups.flatMap(g=>g.payouts),payouts);
+  for(const [i,g] of groups.entries()) {
+    assert.equal(g.index,-1-i);
+    const attempt=await chain.prepareBatch(g.payouts);
+    assert.ok(Buffer.from(attempt.raw,'base64').length<=1232);
+  }
+  assert.equal((await chain.planBatches(payouts.slice(0,3))).length,1);
+});
 test('dry run never loads a signer and cannot prepare payments',async t=>{
   const f=fixture(t),chain=await connectChain({...f.config,live:false,keyFile:'missing'},f.rpc);
   assert.equal(await chain.balance(),'1000');

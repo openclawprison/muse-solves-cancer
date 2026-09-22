@@ -148,6 +148,7 @@ export async function GET() {
       distributionTxHash: epoch?.distributionTxHash ?? null,
     },
     leaderboard: leaderboardWithPayouts,
+    totalRewardsSent: payoutRows.filter(p => p.status === 'keeper_reported' && p.txHash && p.paidAt).reduce((sum,p) => sum + BigInt(p.amountWei),0n).toString(),
     recentPayouts: payoutRows.slice(-50).reverse().map(p => ({ id: p.id, epochId: p.epochId, wallet: p.wallet, amount: p.amountWei, status: p.status, txHash: p.txHash })),
   });
 }

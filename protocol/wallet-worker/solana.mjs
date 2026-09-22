@@ -46,7 +46,37 @@ export async function connectChain(config, injectedConnection) {
     if (!PublicKey.isOnCurve(key.toBytes()) || key.equals(treasury)) throw new Error('Recipient must be a distinct normal wallet');
     return key;
   }
+  function transactionFor(payouts, block) {
+    const transaction = new Transaction({feePayer:treasury,...block});
+    for (const payout of payouts) {
+      if (BigInt(payout.amountRewardUnits) <= 0n) throw new Error('Invalid payment amount');
+      const owner = recipient(payout.wallet);
+      const destination = getAssociatedTokenAddressSync(mint,owner,false,program);
+      transaction.add(
+        createAssociatedTokenAccountIdempotentInstruction(treasury,destination,owner,mint,program),
+        createTransferCheckedInstruction(source,mint,destination,treasury,BigInt(payout.amountRewardUnits),token.decimals,[],program),
+      );
+    }
+    return transaction;
+  }
   return {
+    async planBatches(payouts) {
+      const batches = []; let current = [];
+      const block = {blockhash:treasury.toBase58(),lastValidBlockHeight:0};
+      for (const payout of payouts) {
+        const candidate = [...current,payout];
+        const tx = transactionFor(candidate,block);
+        let fits = true;
+        try { tx.serialize({requireAllSignatures:false,verifySignatures:false}); } catch { fits = false; }
+        if (!fits) {
+          if (!current.length) throw new Error('Single payout exceeds transaction size');
+          batches.push(current); current = [payout];
+          transactionFor(current,block).serialize({requireAllSignatures:false,verifySignatures:false});
+        } else current = candidate;
+      }
+      if (current.length) batches.push(current);
+      return batches.map((rows,i)=>({index:-1-i,payouts:rows}));
+    },
     async balance() { return (await account())?.amount.toString() ?? '0'; },
     async validateRecipients(payouts) { for (const payout of payouts) recipient(payout.wallet); },
     async prepare(payout) { return this.prepareBatch([payout]); },
@@ -58,16 +88,7 @@ export async function connectChain(config, injectedConnection) {
       const total = payouts.reduce((sum,payout) => sum + BigInt(payout.amountRewardUnits),0n);
       if (!funded || funded.amount < total) throw new Error('Treasury token balance insufficient');
       const block = await connection.getLatestBlockhash('finalized');
-      const transaction = new Transaction({feePayer:treasury,...block});
-      for (const payout of payouts) {
-        if (BigInt(payout.amountRewardUnits) <= 0n) throw new Error('Invalid payment amount');
-        const owner = recipient(payout.wallet);
-        const destination = getAssociatedTokenAddressSync(mint,owner,false,program);
-        transaction.add(
-        createAssociatedTokenAccountIdempotentInstruction(treasury,destination,owner,mint,program),
-        createTransferCheckedInstruction(source,mint,destination,treasury,BigInt(payout.amountRewardUnits),token.decimals,[],program),
-      );
-      }
+      const transaction = transactionFor(payouts,block);
       // Solana's packet ceiling is 1,232 bytes. Fail closed rather than silently
       // split an atomic round, omit recipients, or send a partially paid round.
       try { transaction.serialize({requireAllSignatures:false,verifySignatures:false}); }

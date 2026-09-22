@@ -18,6 +18,7 @@ function fixture(t) {
 function chain() {
   const calls={prepared:0,sent:0};
   return {calls,balance:async()=>'101',validateRecipients:async()=>{},
+    planBatches:async payouts=>[{index:-1,payouts}],
     prepare:async()=>{calls.prepared++;return {signature:'sig',raw:'same-signed-bytes',lastValidBlockHeight:100};},
     prepareBatch:async payouts=>{assert.equal(payouts.length,2);calls.prepared++;return {signature:'sig',raw:'same-signed-bytes',lastValidBlockHeight:100};},
     status:async()=>null,height:async()=>50,broadcast:async(raw)=>{assert.equal(raw,'same-signed-bytes');calls.sent++;}};
@@ -107,4 +108,21 @@ test('batch restart rebroadcasts same signed bytes for entire round',async t=>{
   assert.equal(c.calls.prepared,1);assert.equal(c.calls.sent,2);
   c.status=async()=>({confirmationStatus:'finalized',err:null});
   assert.equal((await tick(args)).status,'settled');assert.equal(c.calls.prepared,1);
+});
+
+test('multiple batches resume after partial completion and report correct shared signatures',async t=>{
+  const f=fixture(t),c=chain();let report;
+  c.planBatches=async payouts=>payouts.map((p,i)=>({index:-1-i,payouts:[p]}));
+  c.prepareBatch=async()=>({signature:'sig'+(++c.calls.prepared),raw:'same-signed-bytes',lastValidBlockHeight:100});
+  c.status=async sig=>sig==='sig1'?{confirmationStatus:'finalized',err:null}:null;
+  const site={clock:async()=>({customSchedule:true,latestClosedEpoch:10}),score:async()=>{},rewards:async()=>rewards,report:async body=>{report=body;}};
+  const args={journal:f.journal,site,chain:c,startEpoch:10,live:true,treasury:'treasury'};
+  assert.equal((await tick(args)).status,'confirming');assert.equal(report,undefined);
+  assert.equal(f.journal.attempt(10,-1).finalized,true);
+  args.journal=f.reopen();
+  c.planBatches=async()=>assert.fail('never regroup sealed batches');
+  c.status=async()=>({confirmationStatus:'finalized',err:null});
+  assert.equal((await tick(args)).status,'settled');
+  assert.equal(c.calls.prepared,2);
+  assert.deepEqual(report.payouts.map(p=>p.txHash),['sig1','sig2']);
 });
