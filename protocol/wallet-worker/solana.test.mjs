@@ -43,6 +43,27 @@ test('wrong cluster, decimals, signer, and frozen account fail closed',async t=>
   f.accountData[108]=2;
   await assert.rejects(connectChain(f.config,f.rpc),/safety checks/);
 });
+
+test('three recipients share one signed transaction with exact amounts',async t=>{
+  const f=fixture(t),chain=await connectChain(f.config,f.rpc);
+  const payouts=[123,234,345].map(n=>({wallet:Keypair.generate().publicKey.toBase58(),amountRewardUnits:String(n)}));
+  const result=await chain.prepareBatch(payouts);
+  const tx=Transaction.from(Buffer.from(result.raw,'base64'));
+  assert.equal(tx.verifySignatures(),true);
+  assert.equal(tx.instructions.length,6);
+  assert.ok(Buffer.from(result.raw,'base64').length<=1232);
+  for(let i=0;i<3;i++) {
+    const instruction=decodeTransferCheckedInstruction(tx.instructions[2*i+1]);
+    assert.equal(instruction.data.amount,BigInt(payouts[i].amountRewardUnits));
+    assert.ok(instruction.keys.destination.pubkey.equals(getAssociatedTokenAddressSync(f.mint,new (f.recipient.constructor)(payouts[i].wallet))));
+  }
+});
+
+test('oversized batch fails before simulation or any broadcast',async t=>{
+  const f=fixture(t),chain=await connectChain(f.config,f.rpc);
+  f.rpc.simulateTransaction=async()=>assert.fail('must reject size before simulation');
+  await assert.rejects(chain.prepareBatch(Array.from({length:30},()=>({wallet:Keypair.generate().publicKey.toBase58(),amountRewardUnits:'1'}))),/single-transaction size/);
+});
 test('dry run never loads a signer and cannot prepare payments',async t=>{
   const f=fixture(t),chain=await connectChain({...f.config,live:false,keyFile:'missing'},f.rpc);
   assert.equal(await chain.balance(),'1000');

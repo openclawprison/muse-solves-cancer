@@ -19,6 +19,7 @@ function chain() {
   const calls={prepared:0,sent:0};
   return {calls,balance:async()=>'101',validateRecipients:async()=>{},
     prepare:async()=>{calls.prepared++;return {signature:'sig',raw:'same-signed-bytes',lastValidBlockHeight:100};},
+    prepareBatch:async payouts=>{assert.equal(payouts.length,2);calls.prepared++;return {signature:'sig',raw:'same-signed-bytes',lastValidBlockHeight:100};},
     status:async()=>null,height:async()=>50,broadcast:async(raw)=>{assert.equal(raw,'same-signed-bytes');calls.sent++;}};
 }
 test('all units allocated exactly, duplicate/self/unsafe scores rejected',()=>{
@@ -71,12 +72,12 @@ test('failed report retries reporting only; changed scores never rewrite sealed 
   const f=fixture(t),c=chain();let reports=0,reads=0;
   c.status=async()=>({confirmationStatus:'finalized',err:null});
   const site={clock:async()=>({customSchedule:true,latestClosedEpoch:10}),score:async()=>{},
-    rewards:async()=>{reads++;return rewards;},report:async()=>{reports++;if(reports===1)throw new Error('unavailable');}};
+    rewards:async()=>{reads++;return rewards;},report:async body=>{assert.equal(new Set(body.payouts.map(p=>p.txHash)).size,1);reports++;if(reports===1)throw new Error('unavailable');}};
   const args={journal:f.journal,site,chain:c,startEpoch:10,live:true,treasury:'treasury'};
   await assert.rejects(tick(args));
   args.journal=f.reopen();
   assert.equal((await tick(args)).status,'settled');
-  assert.equal(c.calls.prepared,2);assert.equal(reads,1);assert.equal(reports,2);
+  assert.equal(c.calls.prepared,1);assert.equal(reads,1);assert.equal(reports,2);
   assert.equal(args.journal.next(10),11);
 });
 test('unfunded and open rounds do not consume an epoch',async t=>{
@@ -86,4 +87,24 @@ test('unfunded and open rounds do not consume an epoch',async t=>{
   assert.equal((await tick(args)).status,'waiting');
   site.clock=async()=>({customSchedule:true,latestClosedEpoch:10});
   assert.equal((await tick(args)).status,'unfunded');assert.equal(journal.next(10),10);
+});
+
+test('legacy pending round keeps per-recipient attempts across upgrade',async t=>{
+  const {journal}=fixture(t),c=chain();
+  journal.insert({epochId:10,manifest:makePlan(10,'101',rewards,'treasury'),complete:false});
+  c.prepareBatch=async()=>assert.fail('legacy round must not be batched');
+  c.status=async()=>({confirmationStatus:'finalized',err:null});
+  const result=await tick({journal,site:{report:async()=>{}},chain:c,startEpoch:10,live:true,treasury:'treasury'});
+  assert.equal(result.status,'settled');assert.equal(c.calls.prepared,2);
+});
+
+test('batch restart rebroadcasts same signed bytes for entire round',async t=>{
+  const f=fixture(t),c=chain();
+  const site={clock:async()=>({customSchedule:true,latestClosedEpoch:10}),score:async()=>{},rewards:async()=>rewards,report:async()=>{}};
+  const args={journal:f.journal,site,chain:c,startEpoch:10,live:true,treasury:'treasury'};
+  await tick(args);assert.ok(f.journal.attempt(10,-1));
+  args.journal=f.reopen();await tick(args);
+  assert.equal(c.calls.prepared,1);assert.equal(c.calls.sent,2);
+  c.status=async()=>({confirmationStatus:'finalized',err:null});
+  assert.equal((await tick(args)).status,'settled');assert.equal(c.calls.prepared,1);
 });

@@ -19,7 +19,7 @@ export async function advancePayment(journal, chain, epoch, payout) {
   let attempt = journal.attempt(epoch, payout.index);
   if (attempt?.finalized) return true;
   if (!attempt) {
-    attempt = await chain.prepare(payout);
+    attempt = payout.payouts ? await chain.prepareBatch(payout.payouts) : await chain.prepare(payout);
     journal.seal(epoch,payout.index,attempt); // durable BEFORE any broadcast
   }
   const status = await chain.status(attempt.signature);
@@ -57,19 +57,22 @@ export async function tick({journal,site,chain,startEpoch,live,treasury}) {
     const manifest = makePlan(epochId,balance,rewards,treasury);
     if (!live) return {status:'dry_run',epochId,payoutCount:manifest.payouts.length,totalRewardUnits:manifest.totalRewardUnits};
     await chain.validateRecipients(manifest.payouts);
-    round = {epochId,manifest,complete:false};
+    round = {epochId,manifest,complete:false,paymentMode:'atomic-batch-v1'};
     journal.insert(round);
   }
   if (!live) return {status:'dry_run_pending',epochId:round.epochId};
   // Never recalculate a sealed round, even after restart or later score changes.
-  for (const payout of round.manifest.payouts) {
+  // Older sealed rounds retain their original per-recipient attempts. New rounds
+  // use one durable attempt at index -1, shared by every recipient in the report.
+  const batch = round.paymentMode === 'atomic-batch-v1';
+  for (const payout of batch ? [{index:-1,payouts:round.manifest.payouts}] : round.manifest.payouts) {
     if (!await advancePayment(journal,chain,round.epochId,payout)) return {status:'confirming',epochId:round.epochId,index:payout.index};
   }
   await site.report({
     epochId:round.epochId,manifestHash:round.manifest.manifestHash,merkleRoot:round.manifest.merkleRoot,
     totalRewardUnits:round.manifest.totalRewardUnits,commitTxHash:null,
     payouts:round.manifest.payouts.map(p => ({index:p.index,wallet:p.wallet,score:p.score,amountRewardUnits:p.amountRewardUnits,
-      txHash:journal.attempt(round.epochId,p.index).signature})),
+      txHash:journal.attempt(round.epochId,batch ? -1 : p.index).signature})),
   });
   round.complete = true;
   journal.save(round);

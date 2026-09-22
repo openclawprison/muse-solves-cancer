@@ -1,5 +1,5 @@
-import { MuseApp } from './rcc-app';
+import { SimpleMuseApp } from './simple-muse-app';
 
 export default function Home() {
-  return <MuseApp />;
+  return <SimpleMuseApp />;
 }

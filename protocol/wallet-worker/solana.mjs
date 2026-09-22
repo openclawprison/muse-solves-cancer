@@ -49,18 +49,29 @@ export async function connectChain(config, injectedConnection) {
   return {
     async balance() { return (await account())?.amount.toString() ?? '0'; },
     async validateRecipients(payouts) { for (const payout of payouts) recipient(payout.wallet); },
-    async prepare(payout) {
+    async prepare(payout) { return this.prepareBatch([payout]); },
+    async prepareBatch(payouts) {
       if (!signer) throw new Error('Signing disabled');
+      if (!payouts.length) throw new Error('Empty payment batch');
       await checkedMint(); // Recheck mutable issuer controls before every signature.
       const funded = await account();
-      if (!funded || funded.amount < BigInt(payout.amountRewardUnits)) throw new Error('Treasury token balance insufficient');
-      const owner = recipient(payout.wallet);
-      const destination = getAssociatedTokenAddressSync(mint,owner,false,program);
+      const total = payouts.reduce((sum,payout) => sum + BigInt(payout.amountRewardUnits),0n);
+      if (!funded || funded.amount < total) throw new Error('Treasury token balance insufficient');
       const block = await connection.getLatestBlockhash('finalized');
-      const transaction = new Transaction({feePayer:treasury,...block}).add(
+      const transaction = new Transaction({feePayer:treasury,...block});
+      for (const payout of payouts) {
+        if (BigInt(payout.amountRewardUnits) <= 0n) throw new Error('Invalid payment amount');
+        const owner = recipient(payout.wallet);
+        const destination = getAssociatedTokenAddressSync(mint,owner,false,program);
+        transaction.add(
         createAssociatedTokenAccountIdempotentInstruction(treasury,destination,owner,mint,program),
         createTransferCheckedInstruction(source,mint,destination,treasury,BigInt(payout.amountRewardUnits),token.decimals,[],program),
       );
+      }
+      // Solana's packet ceiling is 1,232 bytes. Fail closed rather than silently
+      // split an atomic round, omit recipients, or send a partially paid round.
+      try { transaction.serialize({requireAllSignatures:false,verifySignatures:false}); }
+      catch { throw new Error('Round exceeds single-transaction size; no rewards sent. Batch capacity review required.'); }
       transaction.sign(signer);
       const simulation = await connection.simulateTransaction(transaction);
       if (simulation.value.err) throw new Error('Transfer simulation failed; check SOL fees, recipient restrictions and token balance');
