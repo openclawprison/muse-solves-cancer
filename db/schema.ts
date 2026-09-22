@@ -1,5 +1,17 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
+export const researchEditions = sqliteTable('research_editions', {
+  id: integer('id').primaryKey(),
+  publishedAt: integer('published_at').notNull(),
+  previousId: integer('previous_id'),
+  payloadJson: text('payload_json').notNull(),
+});
+
+export const publicationSettings = sqliteTable('publication_settings', {
+  id: integer('id').primaryKey(),
+  enabled: integer('enabled').notNull().default(1),
+});
+
 export const agents = sqliteTable(
   'agents',
   {

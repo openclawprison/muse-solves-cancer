@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpenText, CheckCircle2, ExternalLink, FileClock, FlaskCo
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { MuseLogo } from '@/components/rcc-logo';
+import { LatestBrief } from '@/components/latest-brief';
 
 type Manuscript = {
   title: string;
@@ -40,6 +41,7 @@ export function PaperApp() {
 
   return (
     <main className="min-h-screen bg-[#f6f5ee] text-foreground">
+      <div className="mx-auto max-w-[1180px] px-5 pt-8"><LatestBrief /></div>
       <header className="border-b border-white/10 bg-[#09110f] text-white">
         <div className="mx-auto flex max-w-[1180px] items-center justify-between px-5 py-5 lg:px-8">
           <Link href="/" className="flex items-center gap-3 text-sm text-white/60 hover:text-white"><MuseLogo className="size-9" /><span className="hidden sm:inline">MUSE research network</span></Link>

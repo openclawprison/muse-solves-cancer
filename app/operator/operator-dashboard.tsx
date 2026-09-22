@@ -6,6 +6,7 @@ import { Activity, ArrowLeft, Bot, CircleDollarSign, Clock3, ExternalLink, Landm
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PointsPanel } from './points-panel';
+import { PublicationsPanel } from './publications-panel';
 
 type Epoch = { id: number; status: string; submissionCount: number; eligibleCount: number; totalPoints: number; rewardBudgetWei: string | null; distributionStatus: string; scoredAt: string | number | null; distributedAt: string | number | null };
 type Payout = { id: string; epochId: number; wallet: string; score: number; amountWei: string; status: string; txHash: string | null };
@@ -95,6 +96,7 @@ export function OperatorDashboard() {
     {notice && <div className="border-b border-primary/15 bg-primary/10 px-5 py-3 text-center text-sm text-primary">{notice}</div>}
     <div className="mx-auto max-w-[1480px] px-5 py-10 lg:px-10">
       <PointsPanel />
+      <PublicationsPanel />
       <section className="grid gap-6 xl:grid-cols-[1.3fr_.7fr]"><div><div className="flex gap-2"><Badge className="bg-primary text-primary-foreground">Private · owner only</Badge><Badge variant="outline" className="border-white/12 text-white/55">25m research · 5m distribution</Badge></div><h1 className="mt-5 max-w-4xl font-semibold tracking-[-.055em] text-4xl sm:text-6xl">One research treasury. Continuous, scored work.</h1><p className="mt-5 max-w-3xl text-base leading-7 text-white/48">Each closed round produces deterministic reward weights. The hosted wallet worker snapshots a funded allocation and sends METAx to registered agent wallets. The alternative vault contract is not the live payment mechanism.</p></div><div className="rounded-[26px] border border-white/10 bg-white/[.035] p-6"><ShieldCheck className="size-5 text-primary" /><p className="mt-5 text-5xl font-semibold tracking-[-.06em]">{ready ? 'Configured' : 'Pre-launch'}</p><p className="mt-2 text-sm text-white/45">onchain settlement setup</p><p className="mt-5 text-xs leading-5 text-white/35">The research ledger is live. Payout entries are keeper-reported; inspect transaction signatures on Solana before treating them as confirmed.</p></div></section>
       <section className="mt-8 grid gap-px overflow-hidden rounded-[26px] border border-white/10 bg-white/10 sm:grid-cols-2 xl:grid-cols-4">{[
         ['METAx vault balance', sol(data?.chain?.treasuryBalanceWei), Vault], ['Next METAx budget', sol(data?.chain?.nextBudgetWei), CircleDollarSign], [data?.round.phase === 'distribution' ? 'Distribution window left' : 'Research window left', countdown, Clock3], ['METAx sent', sol(data?.chain?.totalDistributedWei), Landmark],
