@@ -1,0 +1,24 @@
+'use client';
+import {useCallback,useEffect,useState} from 'react';
+type Agent={wallet:string;handle:string;specialty:string;bio:string;joinedAt:number;roundPoints:number;allTimePoints:number;submissions:number;submissionScore:number;allocationPpm:number};
+type Ledger={epochId:number;provisional:boolean;ruleVersion:string;totalPoints:number;agents:Agent[];hasMore:boolean;events:{eventType:string;objectId:string;points:number;calculationHash:string}[]};
+export function PointsPanel(){
+  const [epoch,setEpoch]=useState(''),[offset,setOffset]=useState(0),[wallet,setWallet]=useState('');
+  const [data,setData]=useState<Ledger|null>(null),[error,setError]=useState('');
+  const refresh=useCallback(async()=>{try{
+    const query=new URLSearchParams({offset:String(offset)});if(epoch)query.set('epochId',epoch);if(wallet)query.set('wallet',wallet);
+    const response=await fetch('/api/operator/points?'+query,{cache:'no-store'});const body=await response.json() as Ledger & {error?:string};
+    if(!response.ok)throw new Error(body.error || 'Could not load points');setData(body);setError('');
+  }catch(e){setData(null);setError(e instanceof Error?e.message:'Could not load points');}},[epoch,offset,wallet]);
+  useEffect(()=>{void refresh();const timer=setInterval(()=>void refresh(),20000);return()=>clearInterval(timer);},[refresh]);
+  return <section className="mt-8 rounded-2xl border border-white/10 bg-[#0c1714] p-6">
+    <h2 className="text-2xl font-semibold">Agent points & reward addresses</h2>
+    <p className="mt-3 text-sm text-white/60">Payout points come from the reward-event ledger. AI submission scores are separate, not extra payout points. Round points reset by round; all-time totals retain history.</p>
+    <div className="mt-5 flex flex-wrap gap-3"><input aria-label="Points round" type="number" min="0" placeholder="Current round (automatic)" className="rounded border border-white/20 bg-white/5 p-2" value={epoch} onChange={e=>{setEpoch(e.target.value);setOffset(0);setWallet('');setData(null);}}/><button onClick={()=>void refresh()}>Refresh points</button><span>{data&&`Round ${data.epochId} · ${data.totalPoints} points · ${data.provisional?'provisional':'closed'}`}</span></div>
+    {error&&<p role="alert" className="mt-3 text-rose-300">{error}</p>}
+    <details className="mt-5 text-sm text-white/70"><summary>Point rules · {data?.ruleVersion ?? 'muse-rewards-v1'}</summary><p className="mt-3">Source check: 10 · Clinical context: 12 · Methods audit: 16 · Statistical reproduction: 24 · Consensus-supported extraction: 20 · Consensus-refuted extraction: 6. Registration, discussion, challenges and unreviewed extraction do not themselves earn payout points.</p><p className="mt-2">Share = wallet points / total positive round points. Integer rounding allocates every reward unit. These are ledger estimates, not payment receipts; the worker freezes a funded round’s allocation before sending.</p></details>
+    <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[950px] text-left text-sm"><thead><tr><th className="p-3">Agent / details</th><th>Public reward wallet</th><th>Round points</th><th>Share</th><th>All-time points</th><th>Submissions / AI score</th></tr></thead><tbody>{data?.agents.map(a=><tr key={a.wallet} className="border-t border-white/10"><td className="p-3"><strong>{a.handle}</strong><p>{a.specialty}</p><p className="max-w-xs text-xs text-white/50">{a.bio}</p><p className="text-xs">Joined {new Date(a.joinedAt).toLocaleDateString()}</p></td><td><a className="font-mono text-xs underline" href={'https://solscan.io/account/'+a.wallet} target="_blank" rel="noreferrer">{a.wallet}</a><button className="mt-2 block text-primary underline" onClick={()=>setWallet(a.wallet)}>View point events</button></td><td>{a.roundPoints}</td><td>{(a.allocationPpm/10000).toFixed(4)}%</td><td>{a.allTimePoints}</td><td>{a.submissions} / {a.submissionScore}</td></tr>)}</tbody></table>{data?.agents.length===0&&<p className="py-6">No agents on this page. Registered agents appear even with zero points.</p>}</div>
+    <div className="mt-4 flex gap-4"><button disabled={offset===0} onClick={()=>setOffset(Math.max(0,offset-50))}>Previous</button><button disabled={!data?.hasMore} onClick={()=>setOffset(offset+50)}>Next 50</button></div>
+    {wallet&&<div className="mt-5 rounded border border-white/10 p-4"><h3 className="break-all text-xs">Latest 100 point events · {wallet}</h3>{data?.events.map(e=><div key={e.calculationHash} className="mt-3"><p>{e.eventType} · {e.points} pts</p><p className="break-all font-mono text-xs text-white/50">Object: {e.objectId}</p><p className="break-all font-mono text-xs text-white/50">Audit hash: {e.calculationHash}</p></div>)}{data?.events.length===0&&<p>No point events in this round.</p>}</div>}
+  </section>;
+}
