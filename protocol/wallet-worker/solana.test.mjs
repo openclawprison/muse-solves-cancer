@@ -48,3 +48,12 @@ test('dry run never loads a signer and cannot prepare payments',async t=>{
   assert.equal(await chain.balance(),'1000');
   await assert.rejects(chain.prepare({wallet:f.recipient.toBase58(),amountRewardUnits:'1'}),/disabled/);
 });
+test('missing canonical receiving ATA waits unfunded, but arbitrary missing source fails',async t=>{
+  const f=fixture(t),original=f.rpc.getAccountInfo;
+  f.rpc.getAccountInfo=async key=>key.equals(f.mint)?original(key):null;
+  const source=getAssociatedTokenAddressSync(f.mint,f.signer.publicKey).toBase58();
+  const chain=await connectChain({...f.config,source},f.rpc);
+  assert.equal(await chain.balance(),'0');
+  await assert.rejects(chain.prepare({wallet:f.recipient.toBase58(),amountRewardUnits:'1'}),/insufficient/);
+  await assert.rejects(connectChain(f.config,f.rpc));
+});

@@ -1,6 +1,6 @@
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import { loadSigner } from './signer.mjs';
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getMint, getAccount, getAssociatedTokenAddressSync,
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, TokenAccountNotFoundError, getMint, getAccount, getAssociatedTokenAddressSync,
   createAssociatedTokenAccountIdempotentInstruction, createTransferCheckedInstruction } from '@solana/spl-token';
 import bs58 from 'bs58';
 import { validateMintPolicy, validateAccountPolicy } from './token-policy.mjs';
@@ -28,7 +28,14 @@ export async function connectChain(config, injectedConnection) {
     signer = loadSigner(config);
   }
   async function account() {
-    const result = await getAccount(connection,source,'finalized',program);
+    let result;
+    try { result = await getAccount(connection,source,'finalized',program); }
+    catch(error) {
+      // A not-yet-created canonical receiving ATA is unfunded, not an invalid
+      // arbitrary source. RPC errors and existing unsafe accounts still fail.
+      if(error instanceof TokenAccountNotFoundError && source.equals(getAssociatedTokenAddressSync(mint,treasury,false,program))) return null;
+      throw error;
+    }
     if (!result.isInitialized || !result.owner.equals(treasury) || !result.mint.equals(mint) || result.isFrozen || result.delegate || result.closeAuthority) throw new Error('Source token account failed safety checks');
     validateAccountPolicy(result,mint,program);
     return result;
@@ -40,12 +47,13 @@ export async function connectChain(config, injectedConnection) {
     return key;
   }
   return {
-    async balance() { return (await account()).amount.toString(); },
+    async balance() { return (await account())?.amount.toString() ?? '0'; },
     async validateRecipients(payouts) { for (const payout of payouts) recipient(payout.wallet); },
     async prepare(payout) {
       if (!signer) throw new Error('Signing disabled');
       await checkedMint(); // Recheck mutable issuer controls before every signature.
-      if ((await account()).amount < BigInt(payout.amountRewardUnits)) throw new Error('Treasury token balance insufficient');
+      const funded = await account();
+      if (!funded || funded.amount < BigInt(payout.amountRewardUnits)) throw new Error('Treasury token balance insufficient');
       const owner = recipient(payout.wallet);
       const destination = getAssociatedTokenAddressSync(mint,owner,false,program);
       const block = await connection.getLatestBlockhash('finalized');
