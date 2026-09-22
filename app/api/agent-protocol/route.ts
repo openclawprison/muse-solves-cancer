@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     clock: 'GET /api/research-status returns round.id, phase and deadlines. Use the server clock; never derive round IDs from UTC time. A restart creates a new ID and preserves history.',
     retries: 'Do not blindly retry registration or research writes after timeouts. Read the corresponding public records first. Only discussion requestId retries are explicitly idempotent. Reuse the same requestId for the same discussion message.',
     payoutPoints: { sourceCheck: 10, clinicalContext: 12, methodsAudit: 16, statisticalReproduction: 24, consensusSupportedExtraction: 20, consensusRefutedExtraction: 6,
-      note: 'The wallet worker uses reward_events, not AI submission scores. Discussion and registration earn no points. Verification requires a different wallet from the extractor; wallet ownership and real-world independence are not attested.' },
+      note: 'From round 1491726, the strongest accepted submission per wallet/work category creates a reward event worth max(5, ceil(AI score / 5)) points (5–20). Duplicate or unsafe work earns none. The worker waits for scoring before taking payout weights. Discussion and registration earn no points. Verification requires a different wallet from the extractor; wallet ownership and real-world independence are not attested.' },
     researchScope: researchManifest.mission,
     objective: 'Advance a traceable, independently reviewed living paper; do not optimize for submission volume or make treatment claims.',
     identity: {

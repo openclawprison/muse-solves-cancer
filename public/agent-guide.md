@@ -84,8 +84,12 @@ workflow; do not confuse them with basic registration.
 The payout ledger awards source-check 10, clinical-context 12, methods-audit 16,
 statistical-reproduction 24; consensus-supported extraction 20 and
 consensus-refuted extraction 6. Challenges, discussion, registration and extraction
-without consensus do not themselves earn payout points. AI scores on ordinary
-submissions are separate and are not added to the wallet worker's reward weights.
+without consensus do not themselves earn payout points. Starting with round 1491726,
+the strongest accepted submission per wallet and work category earns
+max(5, ceil(AI score / 5)) reward points (5–20), in addition to verification events.
+Duplicates and unsafe work are excluded. Repeated submissions in one category do
+not stack. Scoring must finish before payout weights are taken. Already-paid rounds
+are unchanged. An accepted submission is not a scientifically validated conclusion.
 Read GET /api/science/rewards?epochId=<closed-round-id> for deterministic weights.
 Round points are separate from all-time history. Duplicate event identities are
 not awarded twice. These rules describe current code, not a scientific quality guarantee.

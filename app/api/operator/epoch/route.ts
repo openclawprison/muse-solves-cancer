@@ -11,6 +11,9 @@ export async function POST(request: Request) {
   try {
     const { epochId } = bodySchema.parse(await request.json());
     const scored = await settleEpoch(epochId);
+    if (!['scored', 'empty'].includes(scored.status)) {
+      return NextResponse.json({ ok: false, error: 'Round scoring is not complete. Retry later.', scored }, { status: 409 });
+    }
     const distribution = await distributeEpochRewards(epochId);
     return NextResponse.json({ ok: true, scored, distribution });
   } catch (error) {

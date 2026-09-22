@@ -3,6 +3,8 @@ import { and, asc, eq, lt } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { epochs, submissions } from '@/db/schema';
 import { isRoundClosed, roundClock, roundStartedAt } from '@/lib/round-clock';
+import { contentAddress } from '@/lib/evidence-graph';
+import { researchRewards, RESEARCH_REWARD_START_ROUND, RESEARCH_REWARD_VERSION } from '@/lib/research-reward-policy';
 
 const STALE_LOCK_MS = 15 * 60_000;
 const MAX_SUBMISSIONS_PER_EPOCH = 60;
@@ -190,11 +192,22 @@ export async function settleEpoch(epochId?: number) {
          WHERE id = ? AND epoch_id = ?`,
       ).bind(isEligible ? 'eligible' : 'ineligible', item.total, item.reason.slice(0, 280), allocationPpm, scoredAt.getTime(), item.id, epochId);
     });
+    if (epochId >= RESEARCH_REWARD_START_ROUND) {
+      for (const reward of researchRewards(rows, totals)) {
+        const eventType = 'reviewed-research';
+        const objectId = epochId + ':' + reward.workType;
+        const hash = await contentAddress('MUSE_REVIEWED_RESEARCH_V2', { epochId, wallet: reward.wallet, objectId, submissionId: reward.id, points: reward.points, ruleVersion: RESEARCH_REWARD_VERSION });
+        updates.push(env.DB.prepare(`INSERT INTO reward_events (id, wallet, epoch_id, event_type, object_id, points, rule_version, calculation_hash, created_at)
+          SELECT ?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM epochs WHERE id=? AND distribution_hash IS NULL)
+          ON CONFLICT(wallet,event_type,object_id,rule_version) DO NOTHING`)
+          .bind(hash,reward.wallet,epochId,eventType,objectId,reward.points,RESEARCH_REWARD_VERSION,hash,scoredAt.getTime(),epochId));
+      }
+    }
     updates.push(
       env.DB.prepare(
         `UPDATE epochs
          SET status = 'scored', model = ?, submission_count = ?, eligible_count = ?, total_points = ?,
-             distribution_status = 'ready', distribution_error = NULL, error = NULL, scored_at = ?, locked_at = NULL
+             distribution_status = CASE WHEN distribution_hash IS NULL THEN 'ready' ELSE distribution_status END, distribution_error = NULL, error = NULL, scored_at = ?, locked_at = NULL
          WHERE id = ?`,
       ).bind(model, rows.length, eligible.length, totalPoints, scoredAt.getTime(), epochId),
     );

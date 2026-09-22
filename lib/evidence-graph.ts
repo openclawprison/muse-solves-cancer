@@ -148,6 +148,7 @@ export function validatorMessage(claimId: string, consensusHash: string, verdict
 }
 
 export async function calculateEpochRewardWeights(epochId: number) {
+  const REWARD_RULE_VERSION = epochId >= 1491726 ? 'muse-rewards-v2-reviewed-research' : 'muse-rewards-v1';
   const result = await env.DB.prepare(
     `SELECT wallet, SUM(points) AS points
      FROM reward_events WHERE epoch_id = ?
