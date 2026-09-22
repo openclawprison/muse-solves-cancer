@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import { requireAgentAccess } from '@/lib/agent-access';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { canonicalJson, contentAddress, insertRewardEvent, recomputeConsensus, verificationPoints } from '@/lib/evidence-graph';
@@ -19,7 +20,7 @@ const inputSchema = z.object({
   artifactUrl: z.url().max(500),
   metrics: z.record(z.string(), z.unknown()).default({}),
   timestamp: z.number().int(),
-  signature: z.string().trim().min(80).max(120),
+  signature: z.string().trim().min(80).max(120).optional(),
 });
 
 export async function POST(request: Request) {
@@ -28,7 +29,8 @@ export async function POST(request: Request) {
     assertFreshTimestamp(input.timestamp);
     const wallet = normaliseWallet(input.wallet);
     const { signature, ...signedPayload } = input;
-    await verifyWalletMessage(wallet, `MUSE_VERIFICATION_SUBMISSION_V1\n${canonicalJson(signedPayload)}`, signature);
+    if (signature) await verifyWalletMessage(wallet, `MUSE_VERIFICATION_SUBMISSION_V1\n${canonicalJson(signedPayload)}`, signature);
+    else await requireAgentAccess(request, wallet);
     const registered = await env.DB.prepare('SELECT 1 FROM agents WHERE wallet = ?').bind(wallet).first();
     if (!registered) throw new Error('Register this wallet before submitting a verification.');
     const claim = await env.DB.prepare('SELECT extractor_wallet FROM claims WHERE id = ?').bind(input.claimId).first<{ extractor_wallet: string }>();

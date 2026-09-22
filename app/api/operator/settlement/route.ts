@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { isOperatorRequest } from '@/lib/operator-auth';
+import { isOperatorRequest, isKeeperRequest } from '@/lib/operator-auth';
 import { roundStartedAt } from '@/lib/round-clock';
 import { isRoundClosed } from '@/lib/round-clock';
 
@@ -22,7 +22,7 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
-  if (!(await isOperatorRequest(request))) return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
+  if (!(await isOperatorRequest(request)) && !(await isKeeperRequest(request))) return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
   try {
     const input = schema.parse(await request.json());
     if (!(await isRoundClosed(input.epochId))) throw new Error('Round is still open.');

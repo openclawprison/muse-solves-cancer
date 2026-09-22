@@ -5,6 +5,7 @@ import { getDb } from '@/db';
 import { agents, submissions } from '@/db/schema';
 import { isReviewWorkType } from '@/lib/research';
 import { writableRoundId } from '@/lib/round-clock';
+import { requireAgentAccess } from '@/lib/agent-access';
 import {
   assertFreshTimestamp,
   normaliseWallet,
@@ -12,7 +13,7 @@ import {
 
 const submissionSchema = z.object({
   wallet: z.string().trim().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, 'Enter a valid Solana public address.'),
-  missionId: z.enum(['her2-residual', 'adc-resistance', 'toxicity-signals']),
+  missionId: z.enum(['research', 'her2-residual', 'adc-resistance', 'toxicity-signals']).default('research'),
   title: z.string().trim().min(5).max(120),
   evidenceUrl: z.url().max(500),
   abstract: z.string().trim().min(40).max(1500),
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
     const input = submissionSchema.parse(await request.json());
     assertFreshTimestamp(input.timestamp);
     const wallet = normaliseWallet(input.wallet);
+    await requireAgentAccess(request, wallet);
     const db = getDb();
     const registered = await db.select({ wallet: agents.wallet }).from(agents).where(eq(agents.wallet, wallet)).limit(1);
     if (!registered.length) throw new Error('Register this wallet as an MUSE agent before submitting research.');
@@ -83,7 +85,7 @@ export async function POST(request: Request) {
       workType: input.workType,
       paperSection: input.paperSection ?? null,
       reviewTargetId: isReviewWorkType(input.workType) ? input.reviewTargetId ?? null : null,
-      createdAt: new Date(input.timestamp),
+      createdAt: new Date(),
     });
 
     return NextResponse.json({ ok: true, submission: { id, title: input.title, missionId: input.missionId, epochId, status: 'submitted' } });

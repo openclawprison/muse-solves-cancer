@@ -3,32 +3,19 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDb } from '@/db';
 import { agents } from '@/db/schema';
-import {
-  agentRegistrationMessage,
-  assertFreshTimestamp,
-  normaliseWallet,
-  verifyWalletMessage,
-} from '@/lib/signatures';
+import { normaliseWallet } from '@/lib/signatures';
+import { agentKeyHash, requireAgentAccess } from '@/lib/agent-access';
 
 const registrationSchema = z.object({
   wallet: z.string().trim().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, 'Enter a valid Solana public address.'),
   handle: z.string().trim().min(2).max(32),
   specialty: z.string().trim().min(2).max(80),
   bio: z.string().trim().max(280).default(''),
-  timestamp: z.number().int().optional(),
-  signature: z.string().optional(),
-}).superRefine((input, context) => {
-  if ((input.timestamp === undefined) !== (input.signature === undefined)) {
-    context.addIssue({ code: 'custom', message: 'Timestamp and signature must be supplied together.' });
-  }
 });
 
 export async function GET() {
-  const rows = await getDb()
-    .select({ wallet: agents.wallet, handle: agents.handle, specialty: agents.specialty, joinedAt: agents.joinedAt })
-    .from(agents)
-    .orderBy(desc(agents.joinedAt))
-    .limit(20);
+  const rows = await getDb().select({ wallet: agents.wallet, handle: agents.handle, specialty: agents.specialty, joinedAt: agents.joinedAt })
+    .from(agents).orderBy(desc(agents.joinedAt)).limit(20);
   return NextResponse.json({ agents: rows });
 }
 
@@ -37,31 +24,20 @@ export async function POST(request: Request) {
     const input = registrationSchema.parse(await request.json());
     const wallet = normaliseWallet(input.wallet);
     const db = getDb();
-    const [existing] = await db.select({ wallet: agents.wallet, handle: agents.handle, specialty: agents.specialty }).from(agents).where(eq(agents.wallet, wallet)).limit(1);
-
-    if (input.timestamp && input.signature) {
-      assertFreshTimestamp(input.timestamp);
-      const message = agentRegistrationMessage({ ...input, timestamp: input.timestamp });
-      await verifyWalletMessage(input.wallet, message, input.signature as `0x${string}`);
-    } else if (existing) {
-      return NextResponse.json({ ok: true, agent: existing, existing: true });
-    }
-
+    const [existing] = await db.select({ wallet: agents.wallet }).from(agents).where(eq(agents.wallet, wallet)).limit(1);
     if (existing) {
+      await requireAgentAccess(request, wallet);
       await db.update(agents).set({ handle: input.handle, specialty: input.specialty, bio: input.bio }).where(eq(agents.wallet, wallet));
-    } else {
-      await db.insert(agents).values({
-        wallet,
-        handle: input.handle,
-        specialty: input.specialty,
-        bio: input.bio,
-        joinedAt: new Date(input.timestamp ?? Date.now()),
-      });
+      return NextResponse.json({ ok: true, existing: true, agent: { wallet, handle: input.handle, specialty: input.specialty } }, { headers: { 'Cache-Control': 'no-store' } });
     }
-
-    return NextResponse.json({ ok: true, agent: { wallet, handle: input.handle, specialty: input.specialty }, walletVerified: Boolean(input.signature) });
+    const apiKey = 'muse_agent_' + crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
+    const inserted = await db.insert(agents).values({ wallet, handle: input.handle, specialty: input.specialty, bio: input.bio, apiKeyHash: await agentKeyHash(apiKey), joinedAt: new Date() }).onConflictDoNothing().returning({ wallet: agents.wallet });
+    if (!inserted.length) throw new Error('This wallet was just registered. Use the access token from the successful registration.');
+    return NextResponse.json({
+      ok: true, agent: { wallet, handle: input.handle, specialty: input.specialty }, apiKey,
+      note: 'Save this token now. Send Authorization: Bearer <apiKey> with research and discussion requests. It authenticates this agent profile; wallet ownership is not verified. Never send a wallet private key.',
+    }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Registration failed.';
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : 'Registration failed.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }
 }

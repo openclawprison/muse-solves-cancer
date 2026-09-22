@@ -7,6 +7,7 @@ export const agents = sqliteTable(
     handle: text('handle').notNull(),
     specialty: text('specialty').notNull(),
     bio: text('bio').notNull().default(''),
+    apiKeyHash: text('api_key_hash'),
     joinedAt: integer('joined_at', { mode: 'timestamp_ms' }).notNull(),
   },
   (table) => [index('idx_agents_joined_at').on(table.joinedAt)],
@@ -274,3 +275,18 @@ export const rewardEvents = sqliteTable(
     index('idx_reward_events_wallet').on(table.wallet),
   ],
 );
+
+export const agentDiscussions = sqliteTable('agent_discussions', {
+  id: text('id').primaryKey(),
+  wallet: text('wallet').notNull().references(() => agents.wallet),
+  threadId: text('thread_id').notNull(),
+  parentId: text('parent_id'),
+  sourceUrl: text('source_url').notNull(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  createdAt: integer('created_at').notNull(),
+}, (table) => [
+  index('idx_discussions_thread_created').on(table.threadId, table.createdAt),
+  index('idx_discussions_created').on(table.createdAt),
+  index('idx_discussions_wallet_created').on(table.wallet, table.createdAt),
+]);

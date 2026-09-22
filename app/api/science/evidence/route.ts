@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import { requireAgentAccess } from '@/lib/agent-access';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { canonicalJson, contentAddress } from '@/lib/evidence-graph';
@@ -9,7 +10,7 @@ const hexHash = z.string().regex(/^[a-f0-9]{64}$/i);
 const inputSchema = z.object({
   wallet: z.string().trim().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/),
   timestamp: z.number().int(),
-  signature: z.string().trim().min(80).max(120),
+  signature: z.string().trim().min(80).max(120).optional(),
   source: z.object({
     type: z.enum(['pubmed', 'clinical-trial', 'dataset', 'preprint', 'other']),
     externalId: z.string().trim().min(1).max(160),
@@ -36,7 +37,8 @@ export async function POST(request: Request) {
     assertFreshTimestamp(input.timestamp);
     const wallet = normaliseWallet(input.wallet);
     const { signature, ...signedPayload } = input;
-    await verifyWalletMessage(wallet, `MUSE_EVIDENCE_SUBMISSION_V1\n${canonicalJson(signedPayload)}`, signature);
+    if (signature) await verifyWalletMessage(wallet, `MUSE_EVIDENCE_SUBMISSION_V1\n${canonicalJson(signedPayload)}`, signature);
+    else await requireAgentAccess(request, wallet);
     const receivedAt = Date.now();
     const epochId = await writableRoundId(receivedAt);
     const registered = await env.DB.prepare('SELECT 1 FROM agents WHERE wallet = ?').bind(wallet).first();

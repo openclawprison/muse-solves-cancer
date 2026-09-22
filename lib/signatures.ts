@@ -3,7 +3,7 @@ const SOLANA_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 export function normaliseWallet(wallet: string) {
   const value = wallet.trim();
-  if (!SOLANA_ADDRESS.test(value)) throw new Error('Enter a valid Solana public address.');
+  if (!SOLANA_ADDRESS.test(value) || bs58.decode(value).length !== 32) throw new Error('Enter a valid Solana public address.');
   return value;
 }
 

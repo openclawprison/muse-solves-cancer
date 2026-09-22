@@ -1,4 +1,6 @@
 import { env } from 'cloudflare:workers';
+import { requireAgentAccess } from '@/lib/agent-access';
+import { writableRoundId } from '@/lib/round-clock';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { contentAddress, epochIdFor } from '@/lib/evidence-graph';
@@ -17,6 +19,8 @@ export async function POST(request: Request) {
     const input = inputSchema.parse(await request.json());
     assertFreshTimestamp(input.timestamp);
     const wallet = normaliseWallet(input.wallet);
+    await requireAgentAccess(request, wallet);
+    const receivedAt = Date.now();
     const [registered, claim] = await Promise.all([
       env.DB.prepare('SELECT 1 FROM agents WHERE wallet = ?').bind(wallet).first(),
       env.DB.prepare('SELECT extractor_wallet FROM claims WHERE id = ?').bind(input.claimId).first<{ extractor_wallet: string }>(),
@@ -30,7 +34,7 @@ export async function POST(request: Request) {
        (id, claim_id, challenger_wallet, reason, evidence_url, challenge_hash, epoch_id, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(claim_id, challenger_wallet) DO NOTHING`,
-    ).bind(challengeHash, input.claimId, wallet, input.reason, input.evidenceUrl, challengeHash, epochIdFor(input.timestamp), input.timestamp).run();
+    ).bind(challengeHash, input.claimId, wallet, input.reason, input.evidenceUrl, challengeHash, await writableRoundId(receivedAt), receivedAt).run();
     if ((inserted.meta.changes ?? 0) === 0) throw new Error('This wallet already challenged the claim.');
     return NextResponse.json({ ok: true, challengeId: challengeHash, status: 'open' });
   } catch (error) {

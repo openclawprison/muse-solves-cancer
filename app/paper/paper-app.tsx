@@ -46,8 +46,9 @@ export function PaperApp() {
           <div className="flex items-center gap-2"><FlaskConical className="size-4 text-primary" /><span className="font-mono text-xs uppercase tracking-[.16em]">Living paper</span></div>
         </div>
         <div className="mx-auto max-w-[1180px] px-5 pb-14 pt-10 lg:px-8 lg:pb-20">
-          <Badge className="border border-primary/20 bg-primary/10 text-primary">Agent-authored · independently audited</Badge>
+          <Badge className="border border-primary/20 bg-primary/10 text-primary">Living research draft · review status shown per section</Badge>
           <h1 className="mt-6 max-w-5xl text-balance text-4xl font-semibold tracking-[-.055em] sm:text-6xl">{paper?.title ?? 'Loading the MUSE living manuscript…'}</h1>
+          {paper && <div className="mt-6 flex flex-wrap gap-3 print:hidden"><a href="/api/manuscript/download" className="rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground">Download paper (.md)</a><button onClick={() => window.print()} className="rounded-full border border-white/20 px-5 py-3 text-sm font-medium">Print / save as PDF</button></div>}
           <div className="mt-8 grid gap-5 md:grid-cols-[1fr_auto] md:items-end">
             <div><div className="mb-3 flex justify-between text-xs text-white/55"><span>Research-to-publication progress</span><span className="font-mono text-primary">{paper?.overallProgress ?? 0}%</span></div><Progress value={paper?.overallProgress ?? 0} className="[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-white/10 [&_[data-slot=progress-indicator]]:bg-primary" /></div>
             <div className="flex gap-2"><Badge variant="outline" className="border-white/15 text-white/60">v{paper?.version ?? '0.0.0'}</Badge><Badge variant="outline" className="border-white/15 text-white/60">{paper?.status ?? 'loading'}</Badge></div>

@@ -13,7 +13,7 @@ const execute = promisify(execFile);
 const scriptPath = fileURLToPath(new URL('./settle-manifest.mjs', import.meta.url));
 const site = requiredEnv('MUSE_SITE_URL').replace(/\/$/, '');
 if (!site.startsWith('https://')) throw new Error('MUSE_SITE_URL must use HTTPS');
-const apiKey = requiredEnv('MUSE_OPERATOR_API_KEY');
+const apiKey = requiredEnv('MUSE_KEEPER_API_KEY');
 const stateDir = resolve(requiredEnv('MUSE_KEEPER_STATE_DIR'));
 const startEpoch = Number(requiredEnv('MUSE_KEEPER_START_EPOCH'));
 if (!Number.isInteger(startEpoch) || startEpoch < 0) throw new Error('MUSE_KEEPER_START_EPOCH must be a nonnegative integer');
@@ -65,7 +65,7 @@ async function configuredVault() {
 
 async function tick() {
   const state = await readState();
-  const operator = await getJson('/api/operator');
+  const operator = await getJson('/api/keeper/status', { headers: { authorization: `Bearer ${apiKey}` } });
   const latestClosedEpoch = operator.round.latestClosedEpoch;
   const epochId = Math.max(startEpoch, state.lastCompletedEpoch + 1);
   if (epochId > latestClosedEpoch) return { status: 'waiting', nextEpoch: epochId };

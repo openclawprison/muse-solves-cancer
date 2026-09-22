@@ -86,7 +86,7 @@ export async function getOperatorStatus() {
     operatorAddress: keeperAddress,
     keeperConfigured: Boolean(keeperAddress && env.MUSE_REWARD_PROGRAM_ID),
     keeperAuthorized: Boolean(keeperAddress && env.MUSE_TREASURY_ADDRESS && env.MUSE_REWARD_PROGRAM_ID),
-    operatorAuthConfigured: Boolean(env.MUSE_OPERATOR_API_KEY),
+    operatorAuthConfigured: Boolean(env.MUSE_OPERATOR_EMAIL),
     aiConfigured: Boolean(env.OPENAI_API_KEY),
     releaseBps: FULL_RELEASE_BPS,
     hardMaxReleaseBps: FULL_RELEASE_BPS,

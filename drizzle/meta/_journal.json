@@ -57,6 +57,13 @@
       "when": 1789973655696,
       "tag": "0007_light_mentor",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1790058309281,
+      "tag": "0008_fuzzy_jasper_sitwell",
+      "breakpoints": true
     }
   ]
 }
