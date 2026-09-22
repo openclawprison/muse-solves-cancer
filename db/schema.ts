@@ -1,5 +1,18 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
+export const scoringBatches = sqliteTable('scoring_batches', {
+  id: text('id').primaryKey(),
+  epochId: integer('epoch_id').notNull(),
+  batchIndex: integer('batch_index').notNull(),
+  inputHash: text('input_hash').notNull(),
+  model: text('model').notNull(),
+  responseId: text('response_id'),
+  scoresJson: text('scores_json'),
+  failureCount: integer('failure_count').notNull().default(0),
+  nextAttemptAt: integer('next_attempt_at').notNull().default(0),
+  lastError: text('last_error'),
+}, table => [index('idx_scoring_batches_epoch').on(table.epochId)]);
+
 export const researchEditions = sqliteTable('research_editions', {
   id: integer('id').primaryKey(),
   publishedAt: integer('published_at').notNull(),

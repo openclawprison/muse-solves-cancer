@@ -6,6 +6,8 @@ import { isRoundClosed, roundClock, roundStartedAt } from '@/lib/round-clock';
 import { contentAddress } from '@/lib/evidence-graph';
 import { researchRewards, RESEARCH_REWARD_START_ROUND, RESEARCH_REWARD_VERSION } from '@/lib/research-reward-policy';
 
+import { scoreInBatches } from './batch-scoring.mjs';
+
 const STALE_LOCK_MS = 45_000;
 
 type ScoreOutput = {
@@ -84,7 +86,7 @@ export async function settleEpoch(epochId?: number) {
     })
     .from(submissions)
     .where(and(eq(submissions.epochId, epochId), eq(submissions.status, 'submitted')))
-    .orderBy(asc(submissions.createdAt));
+    .orderBy(asc(submissions.createdAt), asc(submissions.id));
 
   if (!rows.length) {
     await db
@@ -103,11 +105,23 @@ export async function settleEpoch(epochId?: number) {
   }
 
   try {
+    let scored: ScoreOutput[];
+    let model = env.OPENAI_MODEL || 'gpt-5.4-mini';
+    const legacyJob = await env.DB.prepare('SELECT response_id FROM scoring_jobs WHERE epoch_id=?').bind(epochId).first();
+    if (!legacyJob) {
+      const batchResult = await scoreInBatches({db:env.DB,rows,epochId,model,apiKey:env.OPENAI_API_KEY});
+      model = batchResult.model;
+      if (batchResult.status !== 'complete') {
+        await db.update(epochs).set({status:'scoring',submissionCount:rows.length,model,lockedAt:null,error:null}).where(eq(epochs.id,epochId));
+        return {id:epochId,status:'scoring',submissionCount:rows.length,completedBatches:batchResult.completedBatches,totalBatches:batchResult.totalBatches};
+      }
+      scored = batchResult.scores as ScoreOutput[];
+    } else {
     const failures = await env.DB.prepare('SELECT COUNT(*) AS n FROM scoring_job_failures WHERE epoch_id=?').bind(epochId).first<{n:number}>();
     if ((failures?.n ?? 0) >= 3) throw new Error('Scoring needs operator review after three invalid responses. No rewards were released.');
     const job = await env.DB.prepare('SELECT response_id, model, payload_json FROM scoring_jobs WHERE epoch_id=?').bind(epochId)
       .first<{response_id:string;model:string;payload_json:string|null}>();
-    const model = job?.model || env.OPENAI_MODEL || 'gpt-5.4-mini';
+    model = job?.model || env.OPENAI_MODEL || 'gpt-5.4-mini';
     let payload: ResponsesPayload;
     if (job?.payload_json) {
       payload = JSON.parse(job.payload_json) as ResponsesPayload;
@@ -194,7 +208,7 @@ export async function settleEpoch(epochId?: number) {
     try { parsed = JSON.parse(outputText(payload)); } catch { parsed = {}; }
     const expectedIds = new Set(rows.map((row) => row.id));
     const uniqueIds = new Set<string>();
-    const scored = (Array.isArray(parsed?.scores) ? parsed.scores : []).filter((item) => {
+    scored = (Array.isArray(parsed?.scores) ? parsed.scores : []).filter((item) => {
       if (!item || typeof item.reason !== 'string' || typeof item.duplicateRisk !== 'boolean' || typeof item.safetyConcern !== 'boolean') return false;
       if (!expectedIds.has(item.id) || uniqueIds.has(item.id)) return false;
       uniqueIds.add(item.id);
@@ -217,6 +231,7 @@ export async function settleEpoch(epochId?: number) {
       throw new Error(reason);
     }
 
+    }
     const totals = scored.map((item) => ({
       ...item,
       total: item.rigor + item.reproducibility + item.novelty + item.evidence + item.collaboration,

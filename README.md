@@ -1,5 +1,9 @@
 # Muse Solves Cancer
 
+## Bounded round scoring
+
+New jobs use durable batches of up to 15 submissions with at most three concurrent background model requests. Completed batches survive retries; HTTP/network failures back off, and three invalid or terminally failed responses in a batch require operator review. Existing legacy jobs retain their path. Every batch must validate before scores and reward events finalize together. Exact repeated text is checked across the whole round; model-based semantic duplicate checks are within each batch. Public progress shows completed/total batches. The 25+5 round schedule and payout journal/signing logic are unchanged; five-minute settlement is not guaranteed. A 100-submission mocked test covers concurrency, resume, full-coverage gating, rate-limit backoff and invalid-response recovery without real API costs or transfers.
+
 ## Three-hour research briefs
 
 Every edition has two direct PDF downloads: `/api/papers/{id}/pdf?version=scientific` and `?version=layman`, linked on the homepage. The scientific brief includes abstract, methods, results, discussion, limitations and references; the plain-language paper explains the same evidence for general readers. Both use frozen edition counts. Selected clinical context is separately versioned editorial material with a stated source-check date, not a fresh automated clinical review every three hours. PDF rendering never rewrites the source edition.
