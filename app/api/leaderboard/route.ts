@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/db';
 import { agents, epochPayouts, epochs, rewardEvents, submissions } from '@/db/schema';
@@ -112,10 +112,10 @@ export async function GET() {
   const leaderboard = [...byWallet.values()]
     .sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
     .map((item, index) => ({ rank: index + 1, ...item }));
-  const payoutRows = await db.select().from(epochPayouts);
+  const payoutRows = await db.select().from(epochPayouts).orderBy(asc(epochPayouts.createdAt));
   const payoutsByWallet = new Map<string, { amountWei: bigint; status: string | null; txHash: string | null }>();
   for (const payout of payoutRows) {
-    const key = payout.wallet.toLowerCase();
+    const key = payout.wallet;
     const existing = payoutsByWallet.get(key) ?? { amountWei: 0n, status: null, txHash: null };
     existing.amountWei += BigInt(payout.amountWei);
     existing.status = payout.status;
@@ -123,7 +123,7 @@ export async function GET() {
     payoutsByWallet.set(key, existing);
   }
   const leaderboardWithPayouts = leaderboard.map((item) => {
-    const payout = payoutsByWallet.get(item.wallet.toLowerCase());
+    const payout = payoutsByWallet.get(item.wallet);
     return {
       ...item,
       payoutAmountWei: payout ? payout.amountWei.toString() : null,
@@ -148,5 +148,6 @@ export async function GET() {
       distributionTxHash: epoch?.distributionTxHash ?? null,
     },
     leaderboard: leaderboardWithPayouts,
+    recentPayouts: payoutRows.slice(-50).reverse().map(p => ({ id: p.id, epochId: p.epochId, wallet: p.wallet, amount: p.amountWei, status: p.status, txHash: p.txHash })),
   });
 }

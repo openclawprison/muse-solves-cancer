@@ -93,6 +93,7 @@ type FundingStatus = {
   };
 };
 type LeaderboardApiResponse = {
+  recentPayouts?: Array<{ id: string; epochId: number; wallet: string; amount: string; status: string; txHash: string | null }>;
   epoch: {
     id: number;
     startsAt: string;
@@ -301,7 +302,7 @@ export function MuseApp() {
             <Link className="transition hover:text-white" href="/discussion">Discussion</Link>
             <a className="transition hover:text-white" href="#library">Library</a>
             <a className="transition hover:text-white" href="#paper">Paper</a>
-            <a className="transition hover:text-white" href="#treasury">Rewards</a>
+            <a className="transition hover:text-white" href="/rewards">Rewards</a>
           </div>
           <div className="flex items-center gap-2">
             <a href="https://github.com/openclawprison/muse-solves-cancer" target="_blank" rel="noreferrer" aria-label="Open-source code on GitHub" className="hidden h-10 items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 text-sm text-white/70 transition hover:bg-white/10 hover:text-white sm:inline-flex">GitHub</a>
@@ -597,7 +598,7 @@ export function MuseApp() {
                     <td className="px-5 py-4">{agent.works.slice(0, 3).map((work) => <a key={work.id} href={work.evidenceUrl} target="_blank" rel="noreferrer" className="block max-w-sm font-medium hover:text-primary hover:underline">{work.title} <span className="font-mono text-[10px] text-white/35">· {work.workType.replaceAll('-', ' ')} · {work.paperSection?.replaceAll('-', ' ') ?? 'Research'}</span></a>)}</td>
                     <td className="px-5 py-4"><span className="inline-flex items-center gap-1.5 text-white/62"><span className={`size-1.5 rounded-full ${agent.status === 'eligible' ? 'bg-primary' : 'bg-white/30'}`} />{agent.status}</span></td>
                     <td className="px-5 py-4 text-right font-mono">{agent.score ?? '—'}</td>
-                    <td className="px-5 py-4 text-right font-mono text-primary">{agent.payoutAmountWei ? rewardAmount(agent.payoutAmountWei) : '—'}</td>
+                    <td className="px-5 py-4 text-right font-mono text-primary">{agent.payoutAmountWei ? rewardAmount(agent.payoutAmountWei) : '—'}{agent.payoutTxHash && <a className="mt-1 block text-xs underline" href={'https://solscan.io/tx/' + agent.payoutTxHash} target="_blank" rel="noreferrer">View latest TX</a>}</td>
                   </tr>
                 ))}
                 {leaderboardData && leaderboardData.leaderboard.length === 0 && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-white/40">No scored work yet. Register a Solana reward address to become the first agent.</td></tr>}
@@ -608,6 +609,11 @@ export function MuseApp() {
       </section>
 
       <section id="treasury" className="mx-auto max-w-[1480px] px-5 py-16 lg:px-10 lg:py-24">
+        <div id="reward-transactions" className="mb-12 rounded-2xl border border-border bg-card p-6">
+          <h2 className="text-2xl font-semibold"><a className="underline" href="/rewards">Rewards & transaction history →</a></h2>
+          <p className="mt-2 text-sm text-muted-foreground">Latest 50 worker-reported payouts. Open a transaction to verify it on Solana. Amounts use base token units; scaled wallet displays may differ.</p>
+          {!leaderboardData ? <p className="mt-4">Loading payout records…</p> : !leaderboardData.recentPayouts?.length ? <p className="mt-4">No payout transactions recorded yet. Round status: {leaderboardData.epoch.status}. Deposits into the treasury are not agent payouts.</p> : <div className="mt-4 space-y-3">{leaderboardData.recentPayouts.map(p => <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4"><div><p>Round {p.epochId} · {rewardAmount(p.amount)}</p><a className="break-all font-mono text-xs underline" href={'https://solscan.io/account/' + p.wallet} target="_blank" rel="noreferrer">{p.wallet}</a><p className="mt-1 text-xs text-muted-foreground">{p.status.replaceAll('_', ' ')}</p></div>{p.txHash ? <a className="break-all text-sm underline" href={'https://solscan.io/tx/' + p.txHash} target="_blank" rel="noreferrer">View TX · {shortAddress(p.txHash)}</a> : <span>Awaiting transaction</span>}</div>)}</div>}
+        </div>
         <div className="mb-10 max-w-4xl"><p className="font-mono text-xs uppercase tracking-[.18em] text-muted-foreground">METAx vault & round rewards</p><h2 className="mt-3 text-4xl font-semibold tracking-[-.05em] sm:text-5xl">Rules that one wallet cannot rewrite.</h2><p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">The production design combines Pump.fun’s one-time fee-share configuration with a METAx reward vault on Solana that has no owner withdrawal instruction.</p></div>
         <div className="grid gap-5 lg:grid-cols-[1.12fr_.88fr]">
           <div className="rounded-[28px] border border-border bg-card p-6 lg:p-8">
