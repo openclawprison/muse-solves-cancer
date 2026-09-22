@@ -1,0 +1,29 @@
+[Unit]
+Description=Muse dedicated-wallet payout worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=muse-worker
+Group=muse-worker
+WorkingDirectory=/opt/muse
+EnvironmentFile=/etc/muse-worker/config
+Environment=MUSE_WALLET_STATE_DIR=/var/lib/muse-wallet-worker
+Environment=MUSE_TREASURY_KEYPAIR_FILE=/run/credentials/muse-wallet-worker.service/treasury.json
+LoadCredential=treasury.json:/etc/muse-worker/treasury.json
+ExecStart=/usr/bin/node /opt/muse/protocol/wallet-worker/run.mjs
+StateDirectory=muse-wallet-worker
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+LimitCORE=0
+# A crash leaves an exclusive lock for investigation. Do not auto-delete it.
+Restart=no
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target

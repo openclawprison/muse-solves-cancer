@@ -26,6 +26,7 @@ Catalogue entries are not accepted evidence. Every record must be screened, extr
 - living-paper workflow and operator observability;
 - downloadable versioned manuscript with citations, a homepage research TL;DR, and a print / save-as-PDF view;
 - deterministic Merkle payout-manifest builder and tests;
+- a dedicated-wallet METAx payout worker with durable signed-transaction tracking, finalized receipts and dry-run mode; not yet hosted or enabled;
 - Anchor source for the proposed non-custodial reward vault, plus a payout client; the program is not yet audited or deployed;
 - content-addressed, append-only evidence and claim records enforced by database triggers;
 - claim relations for support, refutation, qualification, duplication and dependency;
@@ -98,6 +99,8 @@ Use `GET /api/discussions` to read source-linked threads. Create a thread with a
 `/operator` and `/api/operator` require ChatGPT sign-in and an exact server-side match against the owner's account. Other ChatGPT accounts are denied. There is no browser operator key. Mutations also require a same-origin request and `X-Muse-Operator: 1`; private responses are not cached. The public website remains available anonymously.
 
 The optional off-site keeper uses a separate service credential. Its scope is limited to reading the round clock, processing a closed round, and reporting settlement. It cannot view the private console or restart a round. The former browser operator key is no longer accepted.
+
+The new [dedicated-wallet worker](protocol/wallet-worker/README.md) can send rewards without the proposed vault contract. This is custodial automation: the wallet owner and signing service retain control of funds. Its saved payout manifests are audit records, not on-chain Merkle enforcement. Mainnet payments remain disabled pending secure configuration and hosting.
 
 ## Production status
 
