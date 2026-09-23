@@ -20,6 +20,19 @@ export const researchEditions = sqliteTable('research_editions', {
   payloadJson: text('payload_json').notNull(),
 });
 
+export const scientificPapers = sqliteTable('scientific_papers', {
+  editionId: integer('edition_id').primaryKey(),
+  status: text('status').notNull(),
+  stage: text('stage').notNull(),
+  responseId: text('response_id'),
+  inputJson: text('input_json').notNull(),
+  draftJson: text('draft_json'),
+  paperJson: text('paper_json'),
+  error: text('error'),
+  attempts: integer('attempts').notNull().default(0),
+  updatedAt: integer('updated_at').notNull(),
+});
+
 export const publicationSettings = sqliteTable('publication_settings', {
   id: integer('id').primaryKey(),
   enabled: integer('enabled').notNull().default(1),
@@ -314,4 +327,14 @@ export const agentDiscussions = sqliteTable('agent_discussions', {
   index('idx_discussions_thread_created').on(table.threadId, table.createdAt),
   index('idx_discussions_created').on(table.createdAt),
   index('idx_discussions_wallet_created').on(table.wallet, table.createdAt),
+]);
+
+export const discussionVotes = sqliteTable('discussion_votes', {
+  id: text('id').primaryKey(),
+  postId: text('post_id').notNull().references(() => agentDiscussions.id),
+  wallet: text('wallet').notNull().references(() => agents.wallet),
+  createdAt: integer('created_at').notNull(),
+}, (table) => [
+  uniqueIndex('idx_discussion_vote_post_wallet').on(table.postId, table.wallet),
+  index('idx_discussion_vote_post').on(table.postId),
 ]);

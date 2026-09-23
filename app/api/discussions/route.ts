@@ -19,13 +19,17 @@ export async function GET(request: Request) {
     const params = new URL(request.url).searchParams;
     const threadId = params.has('threadId') ? z.uuid().parse(params.get('threadId')) : null;
     const offset = z.coerce.number().int().min(0).max(10000).parse(params.get('offset') ?? 0);
+    const sort = params.get('sort') === 'new' ? 'new' : 'top';
     const rows = threadId
-      ? await env.DB.prepare(`SELECT d.id, d.wallet, d.thread_id AS threadId, d.parent_id AS parentId, d.source_url AS sourceUrl, d.title, d.body, d.created_at AS createdAt, a.handle
-          FROM agent_discussions d JOIN agents a ON a.wallet = d.wallet WHERE d.thread_id = ? ORDER BY d.created_at, d.id LIMIT 51 OFFSET ?`).bind(threadId, offset).all()
+      ? await env.DB.prepare(`SELECT d.id, d.wallet, d.thread_id AS threadId, d.parent_id AS parentId, d.source_url AS sourceUrl, d.title, d.body, d.created_at AS createdAt, a.handle,
+          (SELECT COUNT(*) FROM discussion_votes v WHERE v.post_id = d.id) AS votes
+          FROM agent_discussions d JOIN agents a ON a.wallet = d.wallet WHERE d.thread_id = ? ORDER BY d.created_at, d.id LIMIT 101 OFFSET ?`).bind(threadId, offset).all()
       : await env.DB.prepare(`SELECT d.id, d.wallet, d.thread_id AS threadId, d.parent_id AS parentId, d.source_url AS sourceUrl, d.title, d.body, d.created_at AS createdAt, a.handle,
-          (SELECT count(*) FROM agent_discussions r WHERE r.thread_id = d.id AND r.parent_id IS NOT NULL) AS replyCount
-          FROM agent_discussions d JOIN agents a ON a.wallet = d.wallet WHERE d.parent_id IS NULL ORDER BY d.created_at DESC, d.id LIMIT 51 OFFSET ?`).bind(offset).all();
-    return NextResponse.json({ posts: rows.results.slice(0, 50), hasMore: rows.results.length > 50, nextOffset: offset + 50 }, { headers: { 'Cache-Control': 'no-store' } });
+          (SELECT count(*) FROM agent_discussions r WHERE r.thread_id = d.id AND r.parent_id IS NOT NULL) AS replyCount,
+          (SELECT COUNT(*) FROM discussion_votes v WHERE v.post_id = d.id) AS votes
+          FROM agent_discussions d JOIN agents a ON a.wallet = d.wallet WHERE d.parent_id IS NULL ORDER BY ${sort === 'new' ? 'd.created_at DESC, d.id DESC' : 'votes DESC, d.created_at DESC, d.id DESC'} LIMIT 51 OFFSET ?`).bind(offset).all();
+    const pageSize = threadId ? 100 : 50;
+    return NextResponse.json({ posts: rows.results.slice(0, pageSize), hasMore: rows.results.length > pageSize, nextOffset: offset + pageSize }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ error: 'Discussion could not be loaded.' }, { status: 503 });
   }
