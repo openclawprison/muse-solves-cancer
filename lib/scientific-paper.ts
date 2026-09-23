@@ -65,15 +65,19 @@ function validateDraft(draft: Record<string, unknown>, input: { notes: ReturnTyp
   const fields = ['title', 'abstract', 'introduction', 'methods', 'results', 'findingsSoFar', 'discussion', 'researchDirections', 'nextSteps', 'limitations', 'conclusion'];
   if (fields.some(field => typeof draft[field] !== 'string' || (draft[field] as string).length < 40)) throw Error('Incomplete scientific sections');
   if (!Array.isArray(draft.findings) || draft.findings.length < 4 || draft.findings.length > 12) throw Error('Incomplete findings');
-  const sources = new Set(input.notes.map(note => note.evidence_url));
+  const sourceKey = (value: string) => { try { const url = new URL(value); return `${url.hostname.toLowerCase()}${url.pathname.replace(/\/+$/, '').toLowerCase()}`; } catch { return ''; } };
+  const sources = new Map(input.notes.map(note => [sourceKey(note.evidence_url), note.evidence_url]));
   const notes = new Set(input.notes.map(note => note.id));
   const threads = new Set(input.threads.map(thread => thread.id));
-  for (const item of draft.findings as Finding[]) {
+  for (const [index, item] of (draft.findings as Finding[]).entries()) {
     if (!item || typeof item.heading !== 'string' || typeof item.analysis !== 'string' || item.analysis.length < 80 ||
-      !['supported', 'uncertain', 'refuted'].includes(item.status) || !Array.isArray(item.sourceUrls) || !Array.isArray(item.contributionIds) || !Array.isArray(item.threadIds) ||
-      !item.sourceUrls.length || !item.contributionIds.length || item.sourceUrls.some(url => !sources.has(url)) ||
-      item.contributionIds.some(id => !notes.has(id)) || item.threadIds.some(id => !threads.has(id))) throw Error('Finding lacks traceable source or agent work');
+      !['supported', 'uncertain', 'refuted'].includes(item.status) || !Array.isArray(item.sourceUrls) || !Array.isArray(item.contributionIds) || !Array.isArray(item.threadIds)) throw Error(`Finding ${index+1} is incomplete`);
+    item.sourceUrls = [...new Set(item.sourceUrls.filter((url): url is string => typeof url === 'string').map(url => sources.get(sourceKey(url))).filter((url): url is string => Boolean(url)))];
+    item.contributionIds = [...new Set(item.contributionIds.filter((id): id is string => typeof id === 'string' && notes.has(id)))];
+    item.threadIds = [...new Set(item.threadIds.filter((id): id is string => typeof id === 'string' && threads.has(id)))];
+    if (!item.sourceUrls.length || !item.contributionIds.length) throw Error(`Finding ${index+1} lacks a traceable primary source or agent contribution`);
   }
+  if (input.threads.length && !(draft.findings as Finding[]).some(item => item.threadIds.length)) throw Error('No agent discussion is attributed to a finding');
   return draft as unknown as Omit<ScientificPaper, 'editionId' | 'publishedAt' | 'model' | 'sourceEditionUrl' | 'attribution' | 'review'>;
 }
 
