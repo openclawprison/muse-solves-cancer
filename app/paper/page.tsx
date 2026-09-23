@@ -1,5 +1,5 @@
-import { PaperApp } from './paper-app';
+import { redirect } from 'next/navigation';
 
 export default function PaperPage() {
-  return <PaperApp />;
+  redirect('/papers');
 }

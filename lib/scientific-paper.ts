@@ -51,7 +51,7 @@ async function api(path: string, body?: object) {
     method: body ? 'POST' : 'GET', signal: AbortSignal.timeout(7000), headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  const payload = await response.json() as { id?: string; status?: string; output?: Array<{ content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
+  const payload = await response.json() as { id?: string; status?: string; output?: Array<{ content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string }; incomplete_details?: { reason?: string } };
   if (!response.ok) throw Error('Research model HTTP ' + response.status + ': ' + (payload.error?.message ?? '').slice(0, 120));
   return payload;
 }
@@ -117,10 +117,10 @@ export async function advanceScientificPaper() {
           schema: audit ? { type: 'object', properties: { verdict: { type: 'string', enum: ['pass', 'revise'] }, issues: { type: 'array', items: { type: 'string' } } }, required: ['verdict', 'issues'], additionalProperties: false } : draftSchema() } },
       });
       if (!payload.id || !/^resp_[\w-]+$/.test(payload.id)) throw Error('Model did not return a response ID');
-      await env.DB.prepare('UPDATE scientific_papers SET response_id=?,error=NULL,updated_at=? WHERE edition_id=?').bind(payload.id, now, editionId).run();
+      await env.DB.prepare('UPDATE scientific_papers SET response_id=?,updated_at=? WHERE edition_id=?').bind(payload.id, now, editionId).run();
     }
     if (['queued', 'in_progress'].includes(payload.status ?? '')) return { status: 'working', editionId, stage: row.stage };
-    if (payload.status !== 'completed') throw Error('Research model ended: ' + payload.status);
+    if (payload.status !== 'completed') throw Error('Research model ended: ' + payload.status + ' ' + (payload.error?.message ?? payload.incomplete_details?.reason ?? ''));
     const result = parseOutput(payload);
     if (row.stage === 'draft') {
       const draft = validateDraft(result, input);
@@ -144,6 +144,7 @@ export async function advanceScientificPaper() {
     return { status: 'published', editionId };
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0, 500) : 'Research synthesis failed';
+    console.error('Scientific paper workflow attempt failed:', message);
     const preserveResponse = row.response_id && (/timeout|fetch failed|network/i.test(message));
     await env.DB.prepare(`UPDATE scientific_papers SET response_id=?,error=?,attempts=attempts+1,status=CASE WHEN attempts>=5 THEN 'attention' ELSE 'working' END,updated_at=? WHERE edition_id=?`).bind(preserveResponse ? row.response_id : null, message, now, editionId).run();
     return { status: 'working', editionId, error: 'retrying' };
