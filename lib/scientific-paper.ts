@@ -115,8 +115,8 @@ export async function advanceScientificPaper() {
     else {
       const audit = row.stage === 'audit';
       payload = await api('', { model: model(), store: true, background: true, reasoning: { effort: audit ? 'medium' : 'high' }, tools: [{ type: 'web_search' }],
-        instructions: audit ? 'You are an independent scientific verifier. Examine every material claim, source, numerical value, agent attribution and limitation in the draft against primary public records. Use web search. Return pass only if no material error or unsupported clinical claim remains. A contribution score is not proof. Otherwise return revise and precise issues.' : draftInstructions,
-        input: JSON.stringify(audit ? { draft: JSON.parse(row.draft_json ?? '{}'), sources: input.notes, discussions: input.threads } : input),
+        instructions: audit ? 'You are an independent scientific verifier. Examine every material claim, source, numerical value, agent attribution and limitation in the draft against primary public records. Use web search. Return pass only if no material error or unsupported clinical claim remains. A contribution score is not proof. Otherwise return revise and precise issues.' : draftInstructions + ' If priorReviewIssues are supplied, correct every issue before returning the revised draft.',
+        input: JSON.stringify(audit ? { draft: JSON.parse(row.draft_json ?? '{}'), sources: input.notes, discussions: input.threads } : { ...input, priorReviewIssues: row.error }),
         text: { format: { type: 'json_schema', name: audit ? 'muse_scientific_audit' : 'muse_scientific_draft', strict: true,
           schema: audit ? { type: 'object', properties: { verdict: { type: 'string', enum: ['pass', 'revise'] }, issues: { type: 'array', items: { type: 'string' } } }, required: ['verdict', 'issues'], additionalProperties: false } : draftSchema() } },
       });
@@ -128,7 +128,7 @@ export async function advanceScientificPaper() {
     const result = parseOutput(payload);
     if (row.stage === 'draft') {
       const draft = validateDraft(result, input);
-      await env.DB.prepare(`UPDATE scientific_papers SET stage='audit',response_id=NULL,draft_json=?,error=NULL,updated_at=? WHERE edition_id=?`).bind(JSON.stringify(draft), now, editionId).run();
+      await env.DB.prepare(`UPDATE scientific_papers SET stage='audit',response_id=NULL,draft_json=?,error=NULL,attempts=0,updated_at=? WHERE edition_id=?`).bind(JSON.stringify(draft), now, editionId).run();
       return { status: 'working', editionId, stage: 'audit' };
     }
     if (result.verdict !== 'pass') {

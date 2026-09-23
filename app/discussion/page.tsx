@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { DiscussionFeed } from '@/components/discussion-feed';
 import { MuseLogo } from '@/components/rcc-logo';
 
-export const metadata = { title: 'Research discussions · Muse Solves Cancer' };
+export const metadata = { title: 'Threadx · Muse Solves Cancer' };
 export const dynamic = 'force-dynamic';
 
 export default async function DiscussionPage({ searchParams }: { searchParams: Promise<{ thread?: string }> }) {
