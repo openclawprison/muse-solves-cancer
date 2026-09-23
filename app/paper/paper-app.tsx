@@ -6,7 +6,6 @@ import { ArrowLeft, BookOpenText, CheckCircle2, ExternalLink, FileClock, FlaskCo
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { MuseLogo } from '@/components/rcc-logo';
-import { LatestBrief } from '@/components/latest-brief';
 
 type Manuscript = {
   title: string;
@@ -41,7 +40,6 @@ export function PaperApp() {
 
   return (
     <main className="min-h-screen bg-[#f6f5ee] text-foreground">
-      <div className="mx-auto max-w-[1180px] px-5 pt-8"><LatestBrief /></div>
       <header className="border-b border-white/10 bg-[#09110f] text-white">
         <div className="mx-auto flex max-w-[1180px] items-center justify-between px-5 py-5 lg:px-8">
           <Link href="/" className="flex items-center gap-3 text-sm text-white/60 hover:text-white"><MuseLogo className="size-9" /><span className="hidden sm:inline">MUSE research network</span></Link>
@@ -50,7 +48,6 @@ export function PaperApp() {
         <div className="mx-auto max-w-[1180px] px-5 pb-14 pt-10 lg:px-8 lg:pb-20">
           <Badge className="border border-primary/20 bg-primary/10 text-primary">Living research draft · review status shown per section</Badge>
           <h1 className="mt-6 max-w-5xl text-balance text-4xl font-semibold tracking-[-.055em] sm:text-6xl">{paper?.title ?? 'Loading the MUSE living manuscript…'}</h1>
-          {paper && <div className="mt-6 flex flex-wrap gap-3 print:hidden"><a href="/api/manuscript/download" className="rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground">Download paper (.md)</a><button onClick={() => window.print()} className="rounded-full border border-white/20 px-5 py-3 text-sm font-medium">Print / save as PDF</button></div>}
           <div className="mt-8 grid gap-5 md:grid-cols-[1fr_auto] md:items-end">
             <div><div className="mb-3 flex justify-between text-xs text-white/55"><span>Research-to-publication progress</span><span className="font-mono text-primary">{paper?.overallProgress ?? 0}%</span></div><Progress value={paper?.overallProgress ?? 0} className="[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-white/10 [&_[data-slot=progress-indicator]]:bg-primary" /></div>
             <div className="flex gap-2"><Badge variant="outline" className="border-white/15 text-white/60">v{paper?.version ?? '0.0.0'}</Badge><Badge variant="outline" className="border-white/15 text-white/60">{paper?.status ?? 'loading'}</Badge></div>

@@ -33,6 +33,13 @@ export const scientificPapers = sqliteTable('scientific_papers', {
   updatedAt: integer('updated_at').notNull(),
 });
 
+export const dailyResearchArticles = sqliteTable('daily_research_articles', {
+  day: text('day').primaryKey(),
+  editionId: integer('edition_id').notNull(),
+  publishedAt: integer('published_at').notNull(),
+  articleJson: text('article_json').notNull(),
+});
+
 export const publicationSettings = sqliteTable('publication_settings', {
   id: integer('id').primaryKey(),
   enabled: integer('enabled').notNull().default(1),

@@ -4,6 +4,7 @@ import { isKeeperRequest } from '@/lib/operator-auth';
 import { roundClock } from '@/lib/round-clock';
 import { publishResearchEdition } from '@/lib/research-editions';
 import { advanceScientificPaper } from '@/lib/scientific-paper';
+import { publishDailyResearchArticle } from '@/lib/daily-article';
 import { settleNextEpoch } from '@/lib/scoring';
 
 export const dynamic = 'force-dynamic';
@@ -19,8 +20,11 @@ export async function GET(request: Request) {
   let scientificPaper;
   try { scientificPaper = await advanceScientificPaper(); }
   catch { scientificPaper = { status: 'retry_required' }; console.error('Scientific paper workflow failed; retry on next heartbeat.'); }
+  let dailyArticle;
+  try { dailyArticle = await publishDailyResearchArticle(); }
+  catch { dailyArticle = { status: 'retry_required' }; console.error('Daily article publication failed; retry on next heartbeat.'); }
   // Review queued closed rounds even when the treasury is unfunded. This does
   // not create a payment manifest, sign a transaction, or alter the wallet journal.
   waitUntil(settleNextEpoch().catch(error => { console.error('Background round scoring failed:', error instanceof Error ? error.message : 'unknown'); }));
-  return NextResponse.json({ round: await roundClock(), publication, scientificPaper }, { headers });
+  return NextResponse.json({ round: await roundClock(), publication, scientificPaper, dailyArticle }, { headers });
 }
