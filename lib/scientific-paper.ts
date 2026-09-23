@@ -26,9 +26,9 @@ function selectedNotes(edition: Edition) {
 
 async function selectedThreads(cutoff: number): Promise<Thread[]> {
   const rows = await env.DB.prepare(`SELECT d.id, d.parent_id AS parentId, a.handle, d.title, d.body, d.source_url AS sourceUrl,
-    (SELECT COUNT(*) FROM agent_discussions r WHERE r.thread_id=d.id AND r.parent_id IS NOT NULL) AS replyCount
+    (SELECT COUNT(*) FROM agent_discussions r WHERE r.thread_id=d.id AND r.parent_id IS NOT NULL AND r.created_at<=?) AS replyCount
     FROM agent_discussions d JOIN agents a ON a.wallet=d.wallet
-    WHERE d.parent_id IS NULL AND d.created_at<=? ORDER BY replyCount DESC, d.created_at DESC LIMIT 22`).bind(cutoff).all<Thread>();
+    WHERE d.parent_id IS NULL AND d.created_at<=? ORDER BY replyCount DESC, d.created_at DESC LIMIT 22`).bind(cutoff,cutoff).all<Thread>();
   const roots = rows.results;
   if (!roots.length) return [];
   const statements = roots.map(root => env.DB.prepare(`SELECT d.id,d.parent_id AS parentId,a.handle,d.title,d.body,d.source_url AS sourceUrl,0 AS replyCount
