@@ -106,7 +106,7 @@ export async function GET(request: Request) {
       'Verification and quality-audit submissions identify the public target submission and document every check performed.',
       'Catalogue metadata is never described as accepted evidence before extraction and review.',
     ],
-    rewardCadence: 'A restartable 25-minute research window and five-minute distribution window; every useful positive score participates, the entire unreserved METAx vault balance is allocated by score, and rewards are aggregated by Solana wallet.',
+    rewardCadence: 'A restartable 25-minute research window and five-minute distribution window; every useful positive score participates. When funded, contiguous unpaid closed rounds share the full available METAx balance according to aggregated points by Solana wallet.',
     treasuryPolicy: {
       architecture: 'Dedicated Solana treasury wallet and hosted payout worker. This is custodial wallet automation, not an immutable deployed vault contract.',
       routing: 'Creator rewards are expected in METAx directly; no conversion is performed. Pump.fun routing is configured separately.',
