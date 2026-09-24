@@ -10,10 +10,14 @@ withdrawal restriction or on-chain Merkle enforcement in this mode.
 
 - Uses the existing private keeper clock and settlement APIs. Requires an active
   25-minute research / 5-minute distribution schedule; refuses the legacy clock.
-- Processes closed rounds in order from an explicit starting round. Scores the
-  round, snapshots reward weights and allocates the full finalized token balance
-  with integer largest-remainder allocation. Later deposits belong to a later
-  round. Empty rounds pay nobody; zero-balance rounds wait for funding.
+- Processes unpaid closed rounds in order from the durable journal. When METAx
+  arrives, it scores the contiguous ready backlog, sums points by wallet across
+  those rounds, and allocates the full verified token balance once with integer
+  largest-remainder allocation. A round still scoring is left for the next
+  settlement. Empty rounds add no points; zero-balance rounds wait for funding.
+- The settlement manifest records every covered round and its reward snapshot
+  hash. One wallet receives one allocation for its aggregate score, with
+  multiple Solana transaction batches only when size limits require them.
 - A sealed allocation never changes. Restarting the website round does not reset
   the payment journal. Later score corrections do not rewrite sealed rewards.
 - Pays SPL tokens with checked mint decimals and idempotent recipient token-account
@@ -25,7 +29,8 @@ withdrawal restriction or on-chain Merkle enforcement in this mode.
 - Failed reporting does not repeat transfers. Unknown expired signatures and
   finalized transaction failures require manual investigation, not blind retry.
 - Five minutes is a target, not a guarantee: payouts run sequentially and can carry
-  over during congestion or with many agents. A blocked payment blocks later rounds.
+  over during congestion or with many agents. A blocked signed payment blocks
+  later settlements. Never discard or reinitialize the journal to clear it.
 
 ## Deployment runbook (service administrators)
 

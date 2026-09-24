@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openJournal } from './journal.mjs';
-import { advancePayment, makePlan, tick } from './engine.mjs';
+import { advancePayment, makePlan, makePooledPlan, tick } from './engine.mjs';
 
 const wallet='11111111111111111111111111111111';
 const wallet2='So11111111111111111111111111111111111111112';
@@ -125,4 +125,43 @@ test('multiple batches resume after partial completion and report correct shared
   assert.equal((await tick(args)).status,'settled');
   assert.equal(c.calls.prepared,2);
   assert.deepEqual(report.payouts.map(p=>p.txHash),['sig1','sig2']);
+});
+
+test('pooled plan combines every unpaid round by wallet and allocates the full deposit once',()=>{
+  const snapshots=[rewards,{...rewards,epochId:11,calculationHash:'b'.repeat(64),allocations:[{wallet,points:3}]},{epochId:12,calculationHash:null,ruleVersion:'test',allocations:[]}];
+  const pooled=makePooledPlan('101',snapshots,'treasury');
+  assert.deepEqual(pooled.coveredEpochIds,[10,11,12]);
+  assert.deepEqual(pooled.manifest.payouts.map(p=>[p.wallet,p.score]),[[wallet,4],[wallet2,2]]);
+  assert.equal(pooled.manifest.payouts.reduce((sum,p)=>sum+BigInt(p.amountRewardUnits),0n),101n);
+  assert.throws(()=>makePooledPlan('101',[snapshots[0],snapshots[2]],'treasury'),/sequence/);
+  assert.throws(()=>makePooledPlan('101',[{...rewards,allocations:[{wallet,points:1},{wallet,points:2}]}],'treasury'),/recipient/);
+});
+
+test('funded backlog seals one grouped settlement; restart reports identical coverage',async t=>{
+  const f=fixture(t),c=chain();let reported;
+  const snapshots=new Map([[10,rewards],[11,{...rewards,epochId:11,calculationHash:'b'.repeat(64),allocations:[{wallet,points:3}]}]]);
+  const seen=[];
+  const site={clock:async()=>({customSchedule:true,latestClosedEpoch:11}),score:async id=>seen.push(id),rewards:async id=>snapshots.get(id),report:async body=>{reported=body;}};
+  const args={journal:f.journal,site,chain:c,startEpoch:10,live:true,treasury:'treasury'};
+  assert.equal((await tick(args)).status,'confirming');
+  assert.deepEqual(seen,[10,11]);
+  assert.deepEqual(f.journal.pending().coveredEpochIds,[10,11]);
+  args.journal=f.reopen();
+  site.score=async()=>assert.fail('sealed settlement must not be rescored');
+  c.status=async()=>({confirmationStatus:'finalized',err:null});
+  assert.equal((await tick(args)).status,'settled');
+  assert.deepEqual(reported.coveredEpochIds,[10,11]);
+  assert.equal(reported.totalRewardUnits,'101');
+  assert.equal(args.journal.next(10),12);
+  assert.equal(c.calls.prepared,1);
+});
+
+test('an unscored newer round is excluded without blocking the ready backlog',async t=>{
+  const {journal}=fixture(t),c=chain();
+  const site={clock:async()=>({customSchedule:true,latestClosedEpoch:11}),score:async id=>{if(id===11)throw new Error('Research API returned HTTP 409');},
+    rewards:async id=>{assert.equal(id,10);return rewards;},report:async()=>{}};
+  const result=await tick({journal,site,chain:c,startEpoch:10,live:true,treasury:'treasury'});
+  assert.equal(result.epochId,10);
+  assert.deepEqual(journal.pending().coveredEpochIds,[10]);
+  assert.equal(journal.next(10),11);
 });
