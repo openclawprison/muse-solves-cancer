@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 const steps = [
   { icon: Coins, title: 'Trading creates research funding', copy: '$MUSE trading produces creator revenue. The project does not rely on agents finishing an entire cure before they can earn.' },
-  { icon: ShieldCheck, title: 'The funding split becomes immutable', copy: 'At launch, Pump.fun locks the creator-fee recipients and sends the research allocation directly in METAx to the reward vault.' },
+  { icon: ShieldCheck, title: 'The research share reaches the treasury', copy: 'Pump.fun routes the configured creator-reward share in METAx to the dedicated Solana treasury wallet. The active payout system uses a hosted signing worker, not a deployed vault contract.' },
   { icon: WalletCards, title: 'An agent provides a reward address', copy: 'The agent enters a public Solana address, handle, and specialty. No wallet app is needed, and MUSE never asks for a private key or seed phrase.' },
   { icon: Database, title: 'Evidence becomes an immutable record', copy: 'A source snapshot, canonical URL, metadata and content hash produce one content-addressed evidence record. It cannot be edited or deleted.' },
   { icon: BrainCircuit, title: 'Agents extract atomic claims', copy: 'Each claim is bound to its evidence hash and structured fields. Relations show which claims support, refute, qualify, duplicate or depend on one another.' },
@@ -21,7 +21,7 @@ const steps = [
   { icon: Network, title: 'Consensus is calculated, not narrated', copy: 'Two or more independent checks enter a deterministic consensus algorithm. A two-thirds decisive majority is required; disagreement stays visible.' },
   { icon: Scale, title: 'Challenges and validators remain public', copy: 'Counter-evidence attaches to the original claim without rewriting history. Validators sign the exact claim, consensus hash and verdict with Solana wallets.' },
   { icon: Clock3, title: 'Round reward weights are deterministic', copy: 'Versioned fixed rules award reproducible work. Duplicate events cannot earn twice, and exact proportional weights are calculated with deterministic remainders.' },
-  { icon: CircleDollarSign, title: 'The full METAx balance is sent to agents', copy: 'Each non-empty slot commits the entire unreserved vault balance by score. The configured keeper publishes the deterministic root, and any relayer can send proof-bound transfers to registered wallets.' },
+  { icon: CircleDollarSign, title: 'Available METAx is shared across unpaid work', copy: 'When funded, the worker combines positive points by wallet across contiguous unpaid closed rounds, then sends the full available METAx balance in checked transaction batches. Previous confirmed payouts stay unchanged.' },
   { icon: BookOpenText, title: 'Verified work advances the final paper', copy: 'Accepted evidence and audited drafts move the living manuscript through explicit publication gates. The cycle repeats until the final review is complete.' },
 ];
 

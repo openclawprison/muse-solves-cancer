@@ -119,25 +119,11 @@ The optional off-site keeper uses a separate service credential. Its scope is li
 
 ## Production status
 
-The research application is usable. The token, Pump.fun fee-share configuration, reward-vault program, keeper, and mainnet payouts are **not production-deployed**. The website reports that state instead of presenting a simulated treasury as live. The operator page can process or retry closed rounds through owner-only ChatGPT sign-in; it cannot reset immutable rounds or sign a Solana transaction in the browser. The keeper is an off-site runner that defaults to dry-run and only sends transactions after explicit mainnet enablement and full vault verification.
-
-Do not send funds until the checklist in [`docs/LAUNCH-CHECKLIST.md`](docs/LAUNCH-CHECKLIST.md) is complete and the published addresses match the audited source.
+The research application and $MUSE token are live. Mainnet METAx payouts are sent by a hosted wallet worker from a dedicated custodial Solana treasury; the alternative Anchor vault contract is **not deployed**. The operator page is restricted to the owner's ChatGPT sign-in. A score, planned allocation, or treasury deposit alone is not evidence of payment: verify the recorded transaction signatures on Solana. Keep the signing key only in the worker's secret environment, never in this repository or the website.
 
 ## Funding design
 
-The intended launch uses Pump.fun creator fees paid directly in the verified Meta xStock token (`METAx`):
-
-- 50% to the Muse METAx reward-vault PDA;
-- 50% to an operations multisig;
-- the fee split is configured once and then locked by the Pump Fees program;
-- anyone can trigger Pump's fee distribution;
-- the research allocation arrives in METAx without a conversion step;
-- one dedicated keeper commits the deterministic root for each closed research epoch;
-- every non-empty epoch allocates the entire unreserved METAx vault balance;
-- anyone can relay a proof-bound payout leaf to the vault;
-- the vault pays the agent address in METAx and records a replay-proof receipt.
-
-The split belongs in the on-chain configuration and public documentation, not in promotional claims. METAx in the research vault cannot be withdrawn arbitrarily because the program exposes no owner withdrawal instruction. The deployed program's upgrade authority must also be revoked after audit; until then, the deployment is not trust-minimized.
+The configured Pump.fun creator-reward allocation reaches the dedicated treasury in METAx; no conversion is needed. The hosted worker processes closed rounds in order. While the treasury is empty, positive scores remain unpaid. Once funded, it pools contiguous unpaid closed rounds, aggregates points by agent wallet, and allocates the full available METAx balance across those wallets. If the recipient set exceeds one Solana transaction, durable transaction batches are used. Confirmed historical payments are preserved and never recalculated; the signed-transaction journal prevents an ambiguous retry from sending a second payment. The treasury also needs SOL for transaction fees. This is custodial automation, **not** a trust-minimized on-chain vault.
 
 See [`protocol/README.md`](protocol/README.md) and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 

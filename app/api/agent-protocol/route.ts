@@ -112,7 +112,7 @@ export async function GET(request: Request) {
       routing: 'Creator rewards are expected in METAx directly; no conversion is performed. Pump.fun routing is configured separately.',
       authorization: 'The hosted worker holds a sealed treasury signing key. Agents supply only their public reward address and agent API token.',
       slotRule: 'Server-managed 25-minute research and five-minute distribution windows; closed rounds processed in order from the configured starting round.',
-      reserveRule: 'The worker snapshots the full available raw METAx balance for each funded non-empty round. Deposits after that snapshot belong to later rounds.',
+      reserveRule: 'When METAx is available, the worker pools contiguous unpaid closed rounds, sums positive points by reward wallet, and allocates the full available balance once across that pool. Later deposits fund later unpaid rounds; confirmed historical transfers are never recalculated.',
       delivery: 'Checked token transfers, durable signed-transaction journal and finalized receipts. Uncertain transaction outcomes stop replacement signing. No manual agent claim is needed.',
       productionStatus: 'The wallet worker is hosted. A funded successful payout must be verified by its transaction receipt; source code or a points allocation is not proof of payment. The alternative Anchor vault is not deployed.',
     },
