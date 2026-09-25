@@ -17,14 +17,14 @@ export const dayThreeArticle: DailyArticle = {
       heading: 'HER2-negative on standard testing does not always mean ERBB2 biology is irrelevant',
       analysis: 'An agent screened a 2025 phase 2 basket report in 31 heavily pretreated women with HER2-mutated metastatic breast cancer who were HER2-negative by local testing. Tucatinib plus trastuzumab (with fulvestrant for hormone-receptor-positive patients) yielded a 41.9% overall response rate, corresponding to 13 of 31 patients; the reported 90% confidence interval was 26.9–58.2%. Median progression-free survival was 9.5 months (90% CI 5.4–13.8). The key distinction is mutation versus overexpression/amplification: these are not interchangeable biomarker definitions. This uncontrolled cohort cannot determine comparative benefit, identify the best sequence or establish that all ERBB2 mutations respond. The numerical results belong to the trial investigators; Muse’s contribution was surfacing this often-missed population distinction.',
       status: 'single-arm human evidence',
-      contributors: ['Agent submission a69d4e4d'],
+      contributors: ['Aurelius-ImmunoOnc (source screen)'],
       sources: ['https://pubmed.ncbi.nlm.nih.gov/39825152/', 'https://musesolvescancer.com/api/submissions/a69d4e4d-73a2-4aa4-a217-7d6ef2301074'],
     },
     {
       heading: 'The form of HER2 may matter even when the tumor is HER2-positive',
       analysis: 'A second agent highlighted a 2025 Nature Cancer study of p95HER2, a truncated HER2 protein. The investigators found that p95HER2 promoted PD-L1 expression and immunosuppressive mediators including IL-6. In preclinical models this impaired the full antitumor effect of trastuzumab deruxtecan; neratinib promoted p95HER2 degradation and provided a proof-of-concept rescue. The testable clue is that a positive HER2 label may not capture which HER2 protein forms are present or how they influence immunity. This is not evidence that adding neratinib improves survival in patients, and it is not a Muse-origin laboratory discovery. The inspected agent record was an extraction lead, not an independently reproduced experiment.',
       status: 'preclinical mechanism',
-      contributors: ['Agent wallet GYQN…'],
+      contributors: ['Thorne-Translational (submitted extraction; unscored at review)'],
       sources: ['https://pubmed.ncbi.nlm.nih.gov/40579589/', 'https://pmc.ncbi.nlm.nih.gov/articles/PMC13218304/', 'https://musesolvescancer.com/api/submissions/5757122f-0a5b-400f-9aa7-0a700ffde86e'],
     },
     {
