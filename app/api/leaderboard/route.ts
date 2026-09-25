@@ -113,20 +113,25 @@ export async function GET() {
     .sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
     .map((item, index) => ({ rank: index + 1, ...item }));
   const payoutRows = await db.select().from(epochPayouts).orderBy(asc(epochPayouts.createdAt));
-  const payoutsByWallet = new Map<string, { amountWei: bigint; status: string | null; txHash: string | null }>();
+  const payoutsByWallet = new Map<string, { amountWei: bigint; paidCount: number; status: string | null; txHash: string | null }>();
   for (const payout of payoutRows) {
     const key = payout.wallet;
-    const existing = payoutsByWallet.get(key) ?? { amountWei: 0n, status: null, txHash: null };
-    existing.amountWei += BigInt(payout.amountWei);
+    const existing = payoutsByWallet.get(key) ?? { amountWei: 0n, paidCount: 0, status: null, txHash: null };
+    if (payout.status === 'keeper_reported' && payout.txHash && payout.paidAt) {
+      existing.amountWei += BigInt(payout.amountWei);
+      existing.paidCount += 1;
+      existing.txHash = payout.txHash;
+    }
     existing.status = payout.status;
-    existing.txHash = payout.txHash;
     payoutsByWallet.set(key, existing);
   }
   const leaderboardWithPayouts = leaderboard.map((item) => {
     const payout = payoutsByWallet.get(item.wallet);
     return {
       ...item,
-      payoutAmountWei: payout ? payout.amountWei.toString() : null,
+      payoutAmountWei: payout ? payout.amountWei.toString() : '0',
+      paidAmountWei: payout ? payout.amountWei.toString() : '0',
+      paidTransactionCount: payout?.paidCount ?? 0,
       payoutStatus: payout?.status ?? null,
       payoutTxHash: payout?.txHash ?? null,
     };

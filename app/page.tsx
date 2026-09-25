@@ -1,9 +1,9 @@
-import { SimpleMuseApp } from './simple-muse-app';
-import { latestDailyResearchArticle } from '@/lib/daily-article';
+import { MuseDesignPreview } from './preview/preview-client';
+import { getPreviewData } from './preview/preview-data';
+import './preview/preview.css';
 
 export const dynamic = 'force-dynamic';
+
 export default async function Home() {
-  let article = null;
-  try { article = await latestDailyResearchArticle(); } catch { /* Keep the homepage available during a transient D1 issue. */ }
-  return <SimpleMuseApp initialDailyArticle={article} />;
+  return <MuseDesignPreview initialData={await getPreviewData()} />;
 }

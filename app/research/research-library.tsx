@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { researchManifest } from '@/lib/research';
+import { ResearchTree } from '@/components/research-tree';
 
 type Paper = { id: string; pmid: string; title: string; journal: string | null; publicationDate: string | null; evidenceLevel: string; screeningStatus: string; sourceUrl: string; fullTextUrl: string | null };
 type Trial = { id: string; nctId: string; title: string; phases: string[]; overallStatus: string | null; enrollment: number | null; resultsAvailable: boolean; scopeLabel: string; screeningStatus: string; sourceUrl: string };
@@ -55,12 +56,14 @@ export function ResearchLibrary() {
 
   return (
     <main className="min-h-screen bg-[#f6f5ee] text-foreground">
-      <header className="border-b border-white/10 bg-[#09110f] text-white">
-        <div className="mx-auto flex max-w-[1320px] items-center justify-between px-5 py-5 lg:px-8"><Link href="/" className="flex items-center gap-2 text-sm text-white/60 hover:text-white"><ArrowLeft className="size-4" /> MUSE research network</Link><div className="flex items-center gap-2"><FlaskConical className="size-4 text-primary" /><span className="font-mono text-xs uppercase tracking-[.16em]">Evidence catalogue</span></div></div>
-        <div className="mx-auto max-w-[1320px] px-5 pb-14 pt-10 lg:px-8 lg:pb-20"><Badge className="border border-primary/20 bg-primary/10 text-primary">{researchManifest.totalSources.toLocaleString()} official metadata records</Badge><h1 className="mt-6 max-w-5xl text-balance text-5xl font-semibold tracking-[-.06em] sm:text-7xl">The shared source library.</h1><p className="mt-5 max-w-3xl text-base leading-7 text-white/50">{researchManifest.note}</p></div>
-      </header>
+      <section className="border-b border-border bg-card text-foreground">
+        <div className="mx-auto flex max-w-[1320px] items-center justify-between px-5 py-5 lg:px-8"><Link href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="size-4" /> MUSE research network</Link><div className="flex items-center gap-2"><FlaskConical className="size-4 text-primary" /><span className="font-mono text-xs uppercase tracking-[.16em]">Evidence catalogue</span></div></div>
+        <div className="mx-auto max-w-[1320px] px-5 pb-7 pt-7 lg:px-8"><Badge className="border border-primary/20 bg-primary/10 text-primary">Research · live branches and source library</Badge><h1 className="mt-4 font-serif text-4xl tracking-tight sm:text-5xl">Follow the questions, not just the papers.</h1></div>
+      </section>
 
+      <ResearchTree />
       <section className="mx-auto max-w-[1320px] px-5 py-10 lg:px-8 lg:py-14">
+        <div className="mb-6"><h2 className="font-serif text-3xl">Source library</h2><p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">{researchManifest.note} These {researchManifest.totalSources.toLocaleString()} records are a catalogue, not all reviewed findings.</p></div>
         <div className="grid gap-4 rounded-[24px] border border-border bg-card p-4 lg:grid-cols-[auto_1fr_auto] lg:items-center lg:p-5">
           <div className="flex rounded-full border border-border bg-muted p-1"><button onClick={() => chooseKind('papers')} className={`rounded-full px-4 py-2 text-xs font-medium ${kind === 'papers' ? 'bg-[#101a17] text-white' : 'text-muted-foreground'}`}>Papers · {researchManifest.pubmed.selectedCount.toLocaleString()}</button><button onClick={() => chooseKind('trials')} className={`rounded-full px-4 py-2 text-xs font-medium ${kind === 'trials' ? 'bg-[#101a17] text-white' : 'text-muted-foreground'}`}>Trials · {researchManifest.trials.selectedCount.toLocaleString()}</button></div>
           <div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} className="h-11 pl-10" placeholder={`Search this page of ${kind} by title or identifier`} /></div>

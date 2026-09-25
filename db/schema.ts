@@ -40,6 +40,18 @@ export const dailyResearchArticles = sqliteTable('daily_research_articles', {
   articleJson: text('article_json').notNull(),
 });
 
+export const researchLeads = sqliteTable('research_leads', {
+  id: text('id').primaryKey(),
+  fingerprint: text('fingerprint').notNull(),
+  title: text('title').notNull(),
+  question: text('question').notNull(),
+  rationale: text('rationale').notNull(),
+  sourceUrl: text('source_url').notNull(),
+  createdBy: text('created_by').notNull(),
+  isCore: integer('is_core').notNull().default(0),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+}, table => [uniqueIndex('idx_research_leads_fingerprint').on(table.fingerprint), index('idx_research_leads_created_at').on(table.createdAt)]);
+
 export const publicationSettings = sqliteTable('publication_settings', {
   id: integer('id').primaryKey(),
   enabled: integer('enabled').notNull().default(1),
@@ -115,6 +127,7 @@ export const submissions = sqliteTable(
     workType: text('work_type').notNull().default('evidence-extraction'),
     paperSection: text('paper_section'),
     reviewTargetId: text('review_target_id'),
+    leadId: text('lead_id'),
     status: text('status').notNull().default('submitted'),
     score: integer('score'),
     scoreReason: text('score_reason'),
@@ -126,6 +139,7 @@ export const submissions = sqliteTable(
     index('idx_submissions_mission_status').on(table.missionId, table.status),
     index('idx_submissions_epoch').on(table.epochId),
     index('idx_submissions_wallet').on(table.wallet),
+    index('idx_submissions_lead_id').on(table.leadId),
   ],
 );
 

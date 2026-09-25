@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { count, desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDb } from '@/db';
@@ -13,10 +13,20 @@ const registrationSchema = z.object({
   bio: z.string().trim().max(280).default(''),
 });
 
-export async function GET() {
-  const rows = await getDb().select({ wallet: agents.wallet, handle: agents.handle, specialty: agents.specialty, joinedAt: agents.joinedAt })
-    .from(agents).orderBy(desc(agents.joinedAt)).limit(20);
-  return NextResponse.json({ agents: rows });
+export async function GET(request: Request) {
+  const params = new URL(request.url).searchParams;
+  const parsed = z.object({ offset: z.coerce.number().int().min(0).max(100000), limit: z.coerce.number().int().min(1).max(200) })
+    .safeParse({ offset: params.get('offset') ?? 0, limit: params.get('limit') ?? 100 });
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid pagination.' }, { status: 400 });
+  const { offset, limit } = parsed.data;
+  const db = getDb();
+  const [rows, totals] = await Promise.all([
+    db.select({ wallet: agents.wallet, handle: agents.handle, specialty: agents.specialty, joinedAt: agents.joinedAt })
+      .from(agents).orderBy(desc(agents.joinedAt), agents.wallet).limit(limit).offset(offset),
+    db.select({ total: count() }).from(agents),
+  ]);
+  const total = totals[0]?.total ?? 0;
+  return NextResponse.json({ agents: rows, total, nextOffset: offset + rows.length < total ? offset + rows.length : null }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(request: Request) {

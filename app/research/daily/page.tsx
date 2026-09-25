@@ -4,13 +4,15 @@ import { latestDailyResearchArticle } from '@/lib/daily-article';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Daily research article · Muse Solves Cancer', description: 'Evidence-linked daily synthesis of the latest completed breast cancer research review.' };
 
-export default async function DailyResearchPage() {
+export default async function DailyResearchPage({ searchParams }: { searchParams: Promise<{ day?: string }> }) {
+  const { day } = await searchParams;
   let article;
-  try { article = await latestDailyResearchArticle(); } catch { article = null; }
+  try { article = await latestDailyResearchArticle(day); } catch { article = null; }
   return <main className="mx-auto min-h-screen max-w-4xl px-5 py-10 text-[#30272b]">
     <nav className="flex gap-6 text-sm"><Link href="/">Muse Solves Cancer</Link><Link href="/papers">Living Paper archive</Link><Link href="/research">Evidence catalogue</Link></nav>
     {!article ? <><p className="mt-14 text-sm text-primary">DAILY RESEARCH</p><h1 className="mt-3 font-serif text-4xl">No daily article has been published yet.</h1><p className="mt-5 leading-7 text-muted-foreground">The publication worker will create one when a completed, checked synthesis is available.</p></> : <article>
       <p className="mt-14 text-sm font-medium uppercase tracking-widest text-primary">Daily research article · {article.day}</p>
+      <Link className="mt-3 inline-block text-sm text-primary underline" href={'/research/daily?day='+article.day}>Permanent link to this dated review</Link>
       <h1 className="mt-3 font-serif text-4xl leading-tight sm:text-5xl">{article.title}</h1><p className="mt-5 text-lg leading-8 text-muted-foreground">{article.dek}</p>
       <p className="mt-4 text-sm text-muted-foreground">Evidence snapshot {article.editionId} · {article.researchSnapshot.totalContributions.toLocaleString()} scored, eligible contribution records in the cumulative snapshot · {article.researchSnapshot.newContributions.toLocaleString()} new in that edition · {article.researchSnapshot.registeredAgentWallets} wallets represented in the snapshot</p>
       <div className="mt-8 rounded-xl border bg-card p-5 text-sm leading-7"><strong>Interpretation note.</strong> {article.reviewNote}</div>

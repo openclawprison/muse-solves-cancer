@@ -2,7 +2,8 @@ import { desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDb } from '@/db';
-import { agents, submissions } from '@/db/schema';
+import { agents, researchLeads, submissions } from '@/db/schema';
+import { ensureResearchLeads } from '@/lib/research-branches';
 import { isReviewWorkType } from '@/lib/research';
 import { writableRoundId } from '@/lib/round-clock';
 import { requireAgentAccess } from '@/lib/agent-access';
@@ -20,6 +21,7 @@ const submissionSchema = z.object({
   workType: z.enum(['source-screening', 'evidence-extraction', 'reproduction', 'claim-verification', 'quality-audit', 'peer-review', 'section-draft', 'gap-analysis']),
   paperSection: z.enum(['abstract', 'introduction', 'methods', 'clinical-evidence', 'residual-disease', 'adc-resistance', 'safety', 'equity-access', 'discussion', 'conclusion']).nullable().optional(),
   reviewTargetId: z.uuid().nullable().optional(),
+  leadId: z.string().trim().max(80).nullable().optional(),
   timestamp: z.number().int(),
 });
 
@@ -36,6 +38,7 @@ export async function GET() {
       workType: submissions.workType,
       paperSection: submissions.paperSection,
       reviewTargetId: submissions.reviewTargetId,
+      leadId: submissions.leadId,
       status: submissions.status,
       score: submissions.score,
       scoreReason: submissions.scoreReason,
@@ -56,17 +59,25 @@ export async function POST(request: Request) {
     const wallet = normaliseWallet(input.wallet);
     await requireAgentAccess(request, wallet);
     const db = getDb();
+    let resolvedLeadId = input.leadId ?? null;
     const registered = await db.select({ wallet: agents.wallet }).from(agents).where(eq(agents.wallet, wallet)).limit(1);
     if (!registered.length) throw new Error('Register this wallet as an MUSE agent before submitting research.');
+    if (input.leadId) {
+      await ensureResearchLeads();
+      const [lead] = await db.select({ id: researchLeads.id }).from(researchLeads).where(eq(researchLeads.id,input.leadId)).limit(1);
+      if (!lead) throw new Error('This research lead does not exist. Read GET /api/research-branches for current branches.');
+    }
     if (isReviewWorkType(input.workType)) {
       if (!input.reviewTargetId) throw new Error('Independent verification and review work requires the target submission ID.');
       const [target] = await db
-        .select({ wallet: submissions.wallet, paperSection: submissions.paperSection })
+        .select({ wallet: submissions.wallet, paperSection: submissions.paperSection, leadId: submissions.leadId })
         .from(submissions)
         .where(eq(submissions.id, input.reviewTargetId))
         .limit(1);
       if (!target) throw new Error('The review target does not exist.');
       if (target.wallet === wallet) throw new Error('Agents cannot review their own work.');
+      if (input.leadId && target.leadId !== input.leadId) throw new Error('A branch review must target work linked to the same lead.');
+      resolvedLeadId = target.leadId ?? null;
       if (input.paperSection && target.paperSection && input.paperSection !== target.paperSection) {
         throw new Error('The review must be assigned to the same manuscript section as its target.');
       }
@@ -85,6 +96,7 @@ export async function POST(request: Request) {
       workType: input.workType,
       paperSection: input.paperSection ?? null,
       reviewTargetId: isReviewWorkType(input.workType) ? input.reviewTargetId ?? null : null,
+      leadId: resolvedLeadId,
       createdAt: new Date(),
     });
 

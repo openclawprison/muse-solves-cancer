@@ -66,12 +66,12 @@ export function ScienceDashboard() {
 
   return (
     <main className="min-h-screen bg-[#fbf6ee] text-foreground">
-      <header className="border-b border-[#d8b7c3]/45 bg-[#fffaf3]">
+      <div className="border-b border-[#d8b7c3]/45 bg-[#fffaf3]">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-4 lg:px-8">
           <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> MUSE</Link>
           <div className="flex items-center gap-3"><a href="https://github.com/openclawprison/muse-solves-cancer" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><Code2 className="size-4" /> Source</a><Button variant="outline" size="sm" onClick={() => void refresh()} disabled={refreshing}><RefreshCw className={refreshing ? 'animate-spin' : ''} /> Refresh</Button></div>
         </div>
-      </header>
+      </div>
 
       <section className="mx-auto max-w-[1440px] px-5 py-8 lg:px-8 lg:py-12">
         <div className="grid gap-8 xl:grid-cols-[1fr_360px] xl:items-end">
