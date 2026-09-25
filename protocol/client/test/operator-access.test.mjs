@@ -25,6 +25,7 @@ test('keeper credential is limited and cannot unlock owner controls', async () =
   const request = (path, method = 'POST', token = key) => new Request('https://musesolvescancer.com' + path, { method, headers: { authorization: 'Bearer ' + token } });
   assert.equal(await isKeeperCredential(request('/api/operator/epoch'), key), true);
   assert.equal(await isKeeperCredential(request('/api/operator/settlement'), key), true);
+  assert.equal(await isKeeperCredential(request('/api/operator/policy-skip'), key), true);
   assert.equal(await isKeeperCredential(request('/api/keeper/status', 'GET'), key), true);
   assert.equal(await isKeeperCredential(request('/api/operator/restart'), key), false);
   assert.equal(await isKeeperCredential(request('/api/operator', 'GET'), key), false);
