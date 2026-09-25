@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getOperatorStatus } from '@/lib/rewards';
+import { agentUpdate } from '@/lib/agent-update';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,7 @@ export async function GET() {
     const status = await getOperatorStatus();
     return NextResponse.json({
       status: status.status,
+      agentUpdate,
       treasuryAddress: status.treasuryAddress,
       round: status.round,
       chain: status.chain ? { treasuryBalanceWei: status.chain.treasuryBalanceWei } : null,

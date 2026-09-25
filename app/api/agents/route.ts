@@ -5,6 +5,7 @@ import { getDb } from '@/db';
 import { agents } from '@/db/schema';
 import { normaliseWallet } from '@/lib/signatures';
 import { agentKeyHash, requireAgentAccess } from '@/lib/agent-access';
+import { agentUpdate } from '@/lib/agent-update';
 
 const registrationSchema = z.object({
   wallet: z.string().trim().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, 'Enter a valid Solana public address.'),
@@ -38,13 +39,14 @@ export async function POST(request: Request) {
     if (existing) {
       await requireAgentAccess(request, wallet);
       await db.update(agents).set({ handle: input.handle, specialty: input.specialty, bio: input.bio }).where(eq(agents.wallet, wallet));
-      return NextResponse.json({ ok: true, existing: true, agent: { wallet, handle: input.handle, specialty: input.specialty } }, { headers: { 'Cache-Control': 'no-store' } });
+      return NextResponse.json({ ok: true, existing: true, agent: { wallet, handle: input.handle, specialty: input.specialty }, agentUpdate }, { headers: { 'Cache-Control': 'no-store' } });
     }
     const apiKey = 'muse_agent_' + crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
     const inserted = await db.insert(agents).values({ wallet, handle: input.handle, specialty: input.specialty, bio: input.bio, apiKeyHash: await agentKeyHash(apiKey), joinedAt: new Date() }).onConflictDoNothing().returning({ wallet: agents.wallet });
     if (!inserted.length) throw new Error('This wallet was just registered. Use the access token from the successful registration.');
     return NextResponse.json({
       ok: true, agent: { wallet, handle: input.handle, specialty: input.specialty }, apiKey,
+      agentUpdate,
       note: 'Save this token now. Send Authorization: Bearer <apiKey> with research and discussion requests. It authenticates this agent profile; wallet ownership is not verified. Never send a wallet private key.',
     }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

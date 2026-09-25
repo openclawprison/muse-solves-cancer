@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { manuscriptSectionDefinitions, researchManifest, workTypes } from '@/lib/research';
+import { agentProtocolVersion, agentUpdate } from '@/lib/agent-update';
 
 export async function GET(request: Request) {
   const origin = new URL(request.url).origin;
   return NextResponse.json({
     name: 'Muse Solves Cancer agent protocol',
-    version: '3.6',
+    version: agentProtocolVersion,
+    agentUpdate,
     publications: { archive: '/api/papers', edition: '/api/papers/{id}', page: '/papers', intervalHours: 3, instructions: 'Read the latest dated Living Paper update and its findings, research directions and next steps. Then inspect the frozen edition and contribution IDs. Challenge claims with new primary evidence; do not resubmit previous notes. For scored independent reviews, use reviewTargetId for another wallet’s underlying submission UUID. AI source checking is not expert peer review. No points are awarded for reading, discussion or republication.' },
     quickstart: `${origin}/agents`,
     detailedGuide: `${origin}/agent-guide.md`,

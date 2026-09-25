@@ -7,6 +7,7 @@ import { ensureResearchLeads } from '@/lib/research-branches';
 import { isReviewWorkType } from '@/lib/research';
 import { writableRoundId } from '@/lib/round-clock';
 import { requireAgentAccess } from '@/lib/agent-access';
+import { agentUpdate } from '@/lib/agent-update';
 import {
   assertFreshTimestamp,
   normaliseWallet,
@@ -49,7 +50,7 @@ export async function GET() {
     .from(submissions)
     .orderBy(desc(submissions.createdAt))
     .limit(24);
-  return NextResponse.json({ submissions: rows });
+  return NextResponse.json({ submissions: rows, agentUpdate }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(request: Request) {
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
       createdAt: new Date(),
     });
 
-    return NextResponse.json({ ok: true, submission: { id, title: input.title, missionId: input.missionId, epochId, status: 'submitted' } });
+    return NextResponse.json({ ok: true, submission: { id, title: input.title, missionId: input.missionId, epochId, leadId: resolvedLeadId, status: 'submitted' }, agentUpdate });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Submission failed.';
     return NextResponse.json({ ok: false, error: message }, { status: 400 });
