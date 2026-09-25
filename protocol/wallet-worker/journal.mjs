@@ -13,6 +13,7 @@ export function openJournal(directory, identity) {
     db = new DatabaseSync(join(directory, 'payouts.sqlite'));
     db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;
       CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), identity TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS policy (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS rounds (epoch INTEGER PRIMARY KEY, data TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS attempts (epoch INTEGER NOT NULL, idx INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY(epoch,idx));`);
     const encoded = JSON.stringify(identity);
@@ -26,6 +27,15 @@ export function openJournal(directory, identity) {
     pending() {
       return db.prepare('SELECT data FROM rounds ORDER BY epoch').all()
         .map(row => JSON.parse(row.data)).find(row => !row.complete);
+    },
+    policyStart() {
+      const row = db.prepare("SELECT value FROM policy WHERE key='half_treasury_start_epoch'").get();
+      return row ? Number(row.value) : null;
+    },
+    setPolicyStart(epochId) {
+      if (!Number.isSafeInteger(epochId) || epochId < 0) throw new Error('Invalid half-treasury start epoch');
+      db.prepare("INSERT OR IGNORE INTO policy (key,value) VALUES ('half_treasury_start_epoch',?)").run(String(epochId));
+      if (this.policyStart() !== epochId) throw new Error('Half-treasury start epoch is already sealed');
     },
     next(start) {
       const last = db.prepare('SELECT MAX(epoch) AS epoch FROM rounds').get().epoch;

@@ -14,7 +14,13 @@ export function makePlan(epochId, balance, rewards, treasury) {
   });
 }
 
-export function makePooledPlan(balance, snapshots, treasury) {
+export function halfTreasuryBudget(balanceRewardUnits) {
+  const balance = BigInt(balanceRewardUnits);
+  if (balance < 0n) throw new Error('Invalid treasury balance');
+  return (balance / 2n).toString();
+}
+
+export function makePooledPlan(rewardBudget, snapshots, treasury) {
   if (!Array.isArray(snapshots) || !snapshots.length) throw new Error('No closed rounds to settle');
   const byWallet = new Map();
   let previous = snapshots[0].epochId - 1;
@@ -35,8 +41,8 @@ export function makePooledPlan(balance, snapshots, treasury) {
   if (byWallet.size > 1000) throw new Error('Too many pooled recipients');
   const epochId = snapshots.at(-1).epochId;
   const provenance = createHash('sha256').update(JSON.stringify(snapshots.map(({epochId,calculationHash,ruleVersion}) => ({epochId,calculationHash,ruleVersion})))).digest('hex');
-  const manifest = buildManifest(epochId, allocateEntireBalance(balance, [...byWallet].map(([wallet,score]) => ({wallet,score}))), {
-    rewardRuleVersion:'muse-pooled-rounds-v1', rewardCalculationHash:provenance,
+  const manifest = buildManifest(epochId, allocateEntireBalance(rewardBudget, [...byWallet].map(([wallet,score]) => ({wallet,score}))), {
+    rewardRuleVersion:'muse-half-treasury-v1', rewardCalculationHash:provenance,
   });
   return {manifest,coveredEpochIds:snapshots.map(row => row.epochId)};
 }
@@ -69,41 +75,48 @@ export async function tick({journal,site,chain,startEpoch,live,treasury}) {
   if (!round) {
     const clock = await site.clock();
     if (!clock.customSchedule) throw new Error('Start a 25+5 round in the operator panel before enabling this worker');
-    const epochId = journal.next(startEpoch);
     if (!Number.isSafeInteger(clock.latestClosedEpoch)) throw new Error('Invalid round clock');
+    let policyStart = journal.policyStart();
+    if (policyStart === null) {
+      if (!Number.isSafeInteger(clock.id) || clock.id <= clock.latestClosedEpoch) throw new Error('Invalid current round for policy activation');
+      policyStart = clock.id + 1; // First full round opened after activation.
+      if (live) journal.setPolicyStart(policyStart);
+    }
+    const epochId = journal.next(startEpoch);
+    if (epochId < policyStart && epochId <= clock.latestClosedEpoch) {
+      const lastSkipped = Math.min(policyStart - 1,clock.latestClosedEpoch,epochId + 999);
+      if (live) {
+        await site.skip({firstEpochId:epochId,lastEpochId:lastSkipped,policyStartEpoch:policyStart});
+        journal.insert({epochId:lastSkipped,complete:true,policySkipped:true,firstCoveredEpochId:epochId});
+      }
+      return {status:live?'policy_skipped':'dry_run_policy_skip',firstEpochId:epochId,lastEpochId:lastSkipped,policyStartEpoch:policyStart};
+    }
     if (epochId > clock.latestClosedEpoch) return {status:'waiting',epochId};
     const balance = await chain.balance();
-    if (BigInt(balance) === 0n) {
+    const rewardBudget = halfTreasuryBudget(balance);
+    if (BigInt(rewardBudget) === 0n) {
       if (live) {
         try { await site.score(epochId); }
         catch (error) { if (error?.message?.includes('HTTP 409')) return {status:'scoring',epochId}; throw error; }
       }
-      return {status:'unfunded',epochId};
+      return {status:BigInt(balance) === 0n ? 'unfunded' : 'reserve_only',epochId};
     }
-    if (clock.latestClosedEpoch - epochId + 1 > 1000) throw new Error('More than 1000 unpaid rounds; manual review required before signing');
-    const snapshots = [];
-    for (let id = epochId; id <= clock.latestClosedEpoch; id++) {
-      if (live) {
-        try { await site.score(id); }
-        catch (error) {
-          if (error?.message?.includes('HTTP 409')) break; // Later round is still scoring; settle only the ready prefix.
-          throw error;
-        }
-      }
-      const rewards = await site.rewards(id);
-      if (rewards.epochId !== id || !Array.isArray(rewards.allocations)) throw new Error('Invalid reward snapshot');
-      snapshots.push(rewards);
+    if (live) {
+      try { await site.score(epochId); }
+      catch (error) { if (error?.message?.includes('HTTP 409')) return {status:'scoring',epochId}; throw error; }
     }
-    if (!snapshots.length) return {status:'scoring',epochId};
-    const pooled = makePooledPlan(balance,snapshots,treasury);
-    const cutoff = snapshots.at(-1).epochId;
+    const rewards = await site.rewards(epochId);
+    if (rewards.epochId !== epochId || !Array.isArray(rewards.allocations)) throw new Error('Invalid reward snapshot');
+    const snapshots = [rewards];
+    const pooled = makePooledPlan(rewardBudget,snapshots,treasury);
+    const cutoff = epochId;
     if (!pooled) {
       if (live) journal.insert({epochId:cutoff,coveredEpochIds:snapshots.map(row=>row.epochId),complete:true,empty:true});
       return {status:live?'empty':'dry_run_empty',epochId:cutoff,coveredRounds:snapshots.length};
     }
     if (!live) return {status:'dry_run',epochId:cutoff,coveredRounds:snapshots.length,payoutCount:pooled.manifest.payouts.length,totalRewardUnits:pooled.manifest.totalRewardUnits};
     await chain.validateRecipients(pooled.manifest.payouts);
-    round = {epochId:cutoff,coveredEpochIds:pooled.coveredEpochIds,manifest:pooled.manifest,complete:false,paymentMode:'sized-batches-v2',batches:await chain.planBatches(pooled.manifest.payouts)};
+    round = {epochId:cutoff,coveredEpochIds:pooled.coveredEpochIds,treasurySnapshotUnits:String(balance),manifest:pooled.manifest,complete:false,paymentMode:'sized-batches-v2',batches:await chain.planBatches(pooled.manifest.payouts)};
     journal.insert(round);
   }
   if (!live) return {status:'dry_run_pending',epochId:round.epochId};
@@ -124,6 +137,7 @@ export async function tick({journal,site,chain,startEpoch,live,treasury}) {
   await site.report({
     epochId:round.epochId,manifestHash:round.manifest.manifestHash,merkleRoot:round.manifest.merkleRoot,
     coveredEpochIds:round.coveredEpochIds ?? [round.epochId],
+    ...(round.treasurySnapshotUnits ? {treasurySnapshotUnits:round.treasurySnapshotUnits} : {}),
     totalRewardUnits:round.manifest.totalRewardUnits,commitTxHash:null,
     payouts:round.manifest.payouts.map(p => ({index:p.index,wallet:p.wallet,score:p.score,amountRewardUnits:p.amountRewardUnits,
       txHash:journal.attempt(round.epochId,round.paymentMode === 'sized-batches-v2' ? groups.find(g=>g.payouts.some(row=>row.index===p.index)).index : batch ? -1 : p.index).signature})),

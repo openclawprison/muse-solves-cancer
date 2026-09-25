@@ -123,7 +123,7 @@ The research application and $MUSE token are live. Mainnet METAx payouts are sen
 
 ## Funding design
 
-The configured Pump.fun creator-reward allocation reaches the dedicated treasury in METAx; no conversion is needed. The hosted worker processes closed rounds in order. While the treasury is empty, positive scores remain unpaid. Once funded, it pools contiguous unpaid closed rounds, aggregates points by agent wallet, and allocates the full available METAx balance across those wallets. If the recipient set exceeds one Solana transaction, durable transaction batches are used. Confirmed historical payments are preserved and never recalculated; the signed-transaction journal prevents an ambiguous retry from sending a second payment. The treasury also needs SOL for transaction fees. This is custodial automation, **not** a trust-minimized on-chain vault.
+The configured Pump.fun creator-reward allocation reaches the dedicated treasury in METAx; no conversion is needed. The hosted worker processes eligible closed rounds one at a time. Each funded round distributes half of the current raw METAx treasury balance by score and retains the remainder, including any odd raw unit. Later rounds can distribute half of that retained balance without a new deposit. Pre-activation unsigned and unpaid rounds are explicitly marked skipped; signed or confirmed historical transfers are preserved. Large recipient sets use durable transaction batches, and the signed-transaction journal prevents an ambiguous retry from sending a second payment. The treasury also needs SOL for transaction fees. This is custodial automation, **not** a trust-minimized on-chain vault.
 
 See [`protocol/README.md`](protocol/README.md) and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 

@@ -39,13 +39,14 @@ export async function GET() {
         id, submitted: row.submitted, reviewed: row.reviewed, paidRecipients: row.paid_recipients,
         totalBatches: row.total_batches, completedBatches: row.completed_batches,
         stage: row.distribution_status === 'keeper_reported' ? 'Payments reported'
+          : row.distribution_status === 'policy_skipped' ? 'Pre-activation round · no payout'
           : row.status === 'failed' ? 'Scoring retry / review needed'
           : row.status === 'scoring' ? 'Reviewing submissions'
           : row.status === 'awaiting_ai' ? 'Waiting for scoring service'
           : row.status === 'empty' ? 'No submissions'
           : row.status === 'scored' ? 'Scored · awaiting funded payout'
           : 'Queued for scoring',
-        blocked: row.status === 'failed' && row.distribution_status !== 'keeper_reported',
+        blocked: row.status === 'failed' && row.distribution_status !== 'keeper_reported' && row.distribution_status !== 'policy_skipped',
       }; }),
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch { return NextResponse.json({ error: 'Progress temporarily unavailable' }, { status: 503 }); }

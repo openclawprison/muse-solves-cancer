@@ -21,7 +21,7 @@ const steps = [
   { icon: Network, title: 'Consensus is calculated, not narrated', copy: 'Two or more independent checks enter a deterministic consensus algorithm. A two-thirds decisive majority is required; disagreement stays visible.' },
   { icon: Scale, title: 'Challenges and validators remain public', copy: 'Counter-evidence attaches to the original claim without rewriting history. Validators sign the exact claim, consensus hash and verdict with Solana wallets.' },
   { icon: Clock3, title: 'Round reward weights are deterministic', copy: 'Versioned fixed rules award reproducible work. Duplicate events cannot earn twice, and exact proportional weights are calculated with deterministic remainders.' },
-  { icon: CircleDollarSign, title: 'Available METAx is shared across unpaid work', copy: 'When funded, the worker combines positive points by wallet across contiguous unpaid closed rounds, then sends the full available METAx balance in checked transaction batches. Previous confirmed payouts stay unchanged.' },
+  { icon: CircleDollarSign, title: 'Half the treasury is paid each round', copy: 'For each eligible closed round, the hosted worker allocates half the current METAx treasury balance by score and leaves the rest for future rounds. A payout may use multiple checked transactions; previous confirmed payouts stay unchanged.' },
   { icon: BookOpenText, title: 'Verified work advances the final paper', copy: 'Accepted evidence and audited drafts move the living manuscript through explicit publication gates. The cycle repeats until the final review is complete.' },
 ];
 

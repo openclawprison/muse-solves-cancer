@@ -74,6 +74,7 @@ async function main() {
       score: epochId => api('/api/operator/epoch',{epochId}),
       rewards: epochId => api(`/api/science/rewards?epochId=${epochId}`),
       report: body => api('/api/operator/settlement',body),
+      skip: body => api('/api/operator/policy-skip',body),
     };
     do {
       try { console.log(JSON.stringify({at:new Date().toISOString(),...await tick({journal,site,chain,startEpoch,live,treasury:config.treasury})})); }

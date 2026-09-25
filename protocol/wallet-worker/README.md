@@ -10,14 +10,17 @@ withdrawal restriction or on-chain Merkle enforcement in this mode.
 
 - Uses the existing private keeper clock and settlement APIs. Requires an active
   25-minute research / 5-minute distribution schedule; refuses the legacy clock.
-- Processes unpaid closed rounds in order from the durable journal. When METAx
-  arrives, it scores the contiguous ready backlog, sums points by wallet across
-  those rounds, and allocates the full verified token balance once with integer
-  largest-remainder allocation. A round still scoring is left for the next
-  settlement. Empty rounds add no points; zero-balance rounds wait for funding.
-- The settlement manifest records every covered round and its reward snapshot
-  hash. One wallet receives one allocation for its aggregate score, with
-  multiple Solana transaction batches only when size limits require them.
+- Processes eligible closed rounds one at a time from the durable journal. Each
+  funded round allocates floor(current METAx treasury raw balance / 2) by score,
+  keeping the other half (and any odd raw unit) in the treasury. A later round
+  can pay half the remainder without a new deposit. Balances below two raw
+  units wait; a round still scoring holds its place.
+- On first activation of this policy, the worker durably records the next full
+  round as its start. Earlier unpaid, unsigned rounds are explicitly marked
+  skipped on the site. Any already sealed transfer is finished first and is
+  never skipped. The settlement manifest records each eligible round's reward
+  snapshot hash and treasury snapshot. Multiple Solana transaction batches
+  are used only when size limits require them.
 - A sealed allocation never changes. Restarting the website round does not reset
   the payment journal. Later score corrections do not rewrite sealed rewards.
 - Pays SPL tokens with checked mint decimals and idempotent recipient token-account
