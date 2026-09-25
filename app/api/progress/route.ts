@@ -29,12 +29,14 @@ export async function GET() {
       });
     }
     const paid = await env.DB.prepare('SELECT MAX(epoch_id) AS id FROM epoch_payouts WHERE tx_hash IS NOT NULL AND paid_at IS NOT NULL').first<{ id: number | null }>();
+    const skipped = paid?.id == null ? null : await env.DB.prepare(`SELECT COUNT(*) AS count FROM epochs
+      WHERE id > ? AND id <= ? AND distribution_status = 'policy_skipped'`).bind(paid.id, latestClosed).first<{count:number}>();
     const coverage = paid?.id == null ? null : await env.DB.prepare(`SELECT MIN(id) AS first, MAX(id) AS last, COUNT(*) AS count FROM epochs
       WHERE distribution_hash = (SELECT distribution_hash FROM epochs WHERE id = ?) AND distribution_status = 'keeper_reported'`).bind(paid.id).first<{first:number|null;last:number|null;count:number}>();
     return NextResponse.json({ updatedAt: Date.now(), currentRound: clock.id, phase: clock.phase, latestClosedRound: latestClosed,
       lastReportedPaymentRound: paid?.id ?? null,
       lastPaymentCoverage: coverage?.first == null ? null : {first:coverage.first,last:coverage.last,count:coverage.count},
-      closedRoundsSinceLastPayment: paid?.id == null ? null : Math.max(0, latestClosed - paid.id),
+      closedRoundsSinceLastPayment: paid?.id == null ? null : Math.max(0, latestClosed - paid.id - (skipped?.count ?? 0)),
       rounds: ids.map(id => { const row = byId.get(id)!; return {
         id, submitted: row.submitted, reviewed: row.reviewed, paidRecipients: row.paid_recipients,
         totalBatches: row.total_batches, completedBatches: row.completed_batches,
