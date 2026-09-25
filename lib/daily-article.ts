@@ -1,6 +1,8 @@
 import { env } from 'cloudflare:workers';
 import { getEdition } from '@/lib/research-editions';
 import { latestScientificPaper, type ScientificPaper } from '@/lib/scientific-paper';
+import { dayTwoArticle } from '@/lib/research/day-two';
+import { dayThreeArticle } from '@/lib/research/day-three';
 
 export type DailyArticle = {
   day: string; title: string; dek: string; editionId: number; publishedAt: number;
@@ -67,8 +69,25 @@ export async function publishDailyResearchArticle() {
   return { status: saved.meta.changes ? 'published' : 'already_published', day, editionId: paper.editionId };
 }
 
-export async function latestDailyResearchArticle(): Promise<DailyArticle | null> {
+export async function latestDailyResearchArticle(day?: string): Promise<DailyArticle | null> {
+  const dayThreeEdition = await getEdition(dayThreeArticle.editionId);
+  const checkedDayThree = dayThreeEdition ? {
+    ...dayThreeArticle,
+    researchSnapshot: {
+      totalContributions: dayThreeEdition.totalContributions,
+      newContributions: dayThreeEdition.newContributions,
+      registeredAgentWallets: dayThreeEdition.agents,
+    },
+  } : null;
+  if (day === dayThreeArticle.day) return checkedDayThree;
+  if (day === dayTwoArticle.day) return dayTwoArticle;
   await ensureTable();
-  const row = await env.DB.prepare('SELECT article_json FROM daily_research_articles ORDER BY day DESC LIMIT 1').first<{ article_json: string }>();
-  return row ? JSON.parse(row.article_json) as DailyArticle : null;
+  const row = day
+    ? await env.DB.prepare('SELECT article_json FROM daily_research_articles WHERE day=?').bind(day).first<{ article_json: string }>()
+    : await env.DB.prepare('SELECT article_json FROM daily_research_articles ORDER BY day DESC LIMIT 1').first<{ article_json: string }>();
+  const article = row ? JSON.parse(row.article_json) as DailyArticle : null;
+  if (day) return article;
+  // A later timestamp must not replace the checked review with an older snapshot.
+  if (article && article.day > (checkedDayThree?.day ?? dayTwoArticle.day) && article.editionId > (checkedDayThree?.editionId ?? dayTwoArticle.editionId)) return article;
+  return checkedDayThree ?? dayTwoArticle;
 }

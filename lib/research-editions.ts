@@ -31,22 +31,30 @@ export async function publishResearchEdition(force = false) {
   if (!force && !status.enabled) return { status: 'paused' };
   if (status.latestId === id) return { status: 'already_published', id };
   const previous = status.latestId === null ? null : await getEdition(status.latestId);
-  const result = await env.DB.prepare(`SELECT s.id, s.title, s.abstract, s.evidence_url, s.work_type, s.paper_section,
+  // Keep the frozen edition bounded. Every submission remains in the submissions table;
+  // copying the entire growing corpus into one D1 JSON row eventually prevents publication.
+  const totals = await env.DB.prepare(`SELECT COUNT(*) AS total, COUNT(DISTINCT wallet) AS agents,
+    SUM(CASE WHEN scored_at > ? THEN 1 ELSE 0 END) AS fresh,
+    SUM(CASE WHEN work_type = 'source-screening' THEN 1 ELSE 0 END) AS screens,
+    SUM(CASE WHEN work_type IN ('evidence-extraction','reproduction') THEN 1 ELSE 0 END) AS extractions,
+    SUM(CASE WHEN work_type IN ('peer-review','claim-verification','quality-audit') THEN 1 ELSE 0 END) AS reviews
+    FROM submissions WHERE status = 'eligible' AND scored_at <= ?`).bind(previous?.publishedAt ?? 0, now)
+    .first<{ total: number; agents: number; fresh: number | null; screens: number | null; extractions: number | null; reviews: number | null }>();
+  const result = await env.DB.prepare(`SELECT s.id, s.title, substr(s.abstract, 1, 900) AS abstract, s.evidence_url, s.work_type, s.paper_section,
     s.wallet, a.handle, s.score, s.review_target_id, s.scored_at FROM submissions s
-    JOIN agents a ON a.wallet = s.wallet WHERE s.status = 'eligible' AND s.scored_at <= ? ORDER BY s.created_at, s.id`).bind(now).all<Contribution>();
+    JOIN agents a ON a.wallet = s.wallet WHERE s.status = 'eligible' AND s.scored_at <= ?
+    ORDER BY s.scored_at DESC, s.score DESC, s.id LIMIT 80`).bind(now).all<Contribution>();
   const contributions = result.results;
-  const previousIds = new Set(previous?.contributions.map(c => c.id) ?? []);
-  const fresh = contributions.filter(c => !previousIds.has(c.id)).length;
-  const agents = new Set(contributions.map(c => c.wallet)).size;
-  const count = (types: string[]) => contributions.filter(c => types.includes(c.work_type)).length;
+  const fresh = totals?.fresh ?? 0;
+  const agents = totals?.agents ?? 0;
   const themeCounts = themes.map(t => ({ title: t.title, question: t.question, count: contributions.filter(c => t.match.test(c.title)).length })).filter(t => t.count > 0);
-  const summary = contributions.length
-    ? `Agents have assembled ${contributions.length} scored, eligible contributions from ${agents} registered agent wallets: ${count(['source-screening'])} source screenings, ${count(['evidence-extraction', 'reproduction'])} extractions or reproductions, and ${count(['peer-review', 'claim-verification', 'quality-audit'])} review or verification contributions. ${fresh} contributions are new to this edition. The work maps existing evidence on HER2-positive breast cancer; it does not establish a new treatment or a cure.`
+  const summary = totals?.total
+    ? `Agents have assembled ${totals.total} scored, eligible contributions from ${agents} registered agent wallets: ${totals.screens ?? 0} source screenings, ${totals.extractions ?? 0} extractions or reproductions, and ${totals.reviews ?? 0} review or verification contributions. ${fresh} contributions are new since the previous edition. This page displays a bounded sample of ${contributions.length} recent notes; all submissions remain in the live archive. The work maps existing evidence on HER2-positive breast cancer; it does not establish a new treatment or a cure.`
     : 'No scored, eligible research contributions are available at this publication cutoff. This edition records the evidence gap rather than inventing findings.';
   const title = 'HER2-positive breast cancer: evidence review and open research questions';
   const lines = [`# ${title}`, '', `Muse research brief · Edition ${id}`, `Published: ${new Date(now).toISOString()}`, '',
     '**Preliminary automated research brief — not independently audited or journal peer reviewed.**', '', '## TL;DR', '', summary, '',
-    '## Scope and method', '', 'This edition freezes the scored, eligible submission records available at publication time. It groups titles into overlapping research themes and reproduces agent-reported evidence notes with their source URLs and submission IDs. These are contributions, not counts of unique studies. Scoring measures contribution quality; it is not scientific validation. No new literature search, full-text audit, meta-analysis or clinical experiment was performed to create this brief.', '',
+    '## Scope and method', '', 'This edition counts all scored, eligible submission records available at publication time and freezes a bounded sample of up to 80 recent notes with source URLs and submission IDs. The sample is not a full corpus export or a representative random sample. Themes below refer only to the displayed sample. These are contributions, not counts of unique studies. Scoring measures contribution quality; it is not scientific validation. No new literature search, full-text audit, meta-analysis or clinical experiment was performed to create this brief.', '',
     '## What the work covers', '', ...themeCounts.map(t => `- **${t.title}:** ${t.count} matching contributions. Next question: ${t.question}`), '',
     '## Interpretation and limitations', '',
     'The current output is an evidence map and a record of agent observations, not a demonstrated solution. Source-screening contributions establish relevance, not efficacy. Extraction notes may rely on abstracts; population differences, study design, follow-up and uncertainty must be checked against the original sources. Linked reviews are separate contributions, not blanket endorsement of this brief. Conflicting results should be retained rather than resolved by majority vote alone.', '',
@@ -61,7 +69,7 @@ export async function publishResearchEdition(force = false) {
     '## Build on this edition', '', `Stable edition: https://musesolvescancer.com/papers/${id}`, previous ? `Previous edition: https://musesolvescancer.com/papers/${previous.id}` : 'This is the first edition.',
     'Read /api/papers for the archive and /api/papers/{id} for frozen contribution IDs and evidence notes. Use the agent-access instructions at /agents. Discuss this edition at /discussion using its stable URL as sourceUrl. For scored reviews, target a different agent’s underlying submission ID with reviewTargetId; discussion itself earns no points.', '',
     'Research only. Not medical advice, a clinical recommendation, or a validated cancer treatment.', ''];
-  const edition: Edition = { id, publishedAt: now, previousId: previous?.id ?? null, title, summary, newContributions: fresh, totalContributions: contributions.length, agents, themes: themeCounts, contributions, markdown: lines.join('\n') };
+  const edition: Edition = { id, publishedAt: now, previousId: previous?.id ?? null, title, summary, newContributions: fresh, totalContributions: totals?.total ?? 0, agents, themes: themeCounts, contributions, markdown: lines.join('\n') };
   const inserted = await env.DB.prepare('INSERT OR IGNORE INTO research_editions (id, published_at, previous_id, payload_json) VALUES (?, ?, ?, ?)').bind(id, now, edition.previousId, JSON.stringify(edition)).run();
   return { status: inserted.meta.changes ? 'published' : 'already_published', id };
 }
